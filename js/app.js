@@ -395,47 +395,154 @@ let selLocal = null;
 let abaJornada = 'hoje';
 let animarLuaDe = null;
 
+const MANIFESTO = 'Cada pessoa tem a própria jornada, sem promessa e sem atalho. Ninguém precisa ser perfeito: pausar faz parte do ciclo, voltar também. O tempo faz parte do resultado, e toda atividade cabe, da academia à caminhada.';
+
+/* Os 28 dias da vitrine: uma volta inteira do ciclo, com a pausa em branco */
+function cicloVitrine() {
+  const hist = [{ fase: 'cheia', data: diasAtras(27) }, { fase: 'minguante', data: diasAtras(17) }, { fase: 'nova', data: diasAtras(11) }, { fase: 'crescente', data: diasAtras(6) }];
+  const com = [26, 24, 23, 21, 19, 18, 15, 13, 5, 3, 2, 1, 0];
+  let cel = '';
+  for (let i = 27; i >= 0; i--) {
+    const dia = diasAtras(i), f = faseNoDia(dia, hist);
+    cel += '<li class="' + (i === 0 ? 'hoje' : '') + '"><span class="ciclo-lua">' + luaMini(C.fases[f].p, 24) + '</span><span class="ciclo-dia">' + deISO(dia).getDate() + '</span>' + (com.indexOf(i) >= 0 ? '<span class="ciclo-ponto"></span>' : '') + '</li>';
+  }
+  return cel;
+}
+
+/* Uma fase no centro, quatro caminhos saindo dela; os pulsos correm pelas linhas */
+function hubSVG() {
+  const nos = [['Aulas', 66, 22], ['Profissionais', 66, 98], ['Grupos', 334, 22], ['Mapa', 334, 98]];
+  const curva = (n) => 'M200 60Q' + (n[1] < 200 ? 130 : 270) + ' 60 ' + n[1] + ' ' + n[2];
+  return '<svg class="hub" viewBox="0 0 400 120" aria-hidden="true" focusable="false">' +
+    nos.map((n) => '<path class="hub-liga" d="' + curva(n) + '"/>').join('') +
+    nos.map((n, i) => '<path class="hub-pulso" pathLength="100" style="--d:' + (i * 0.6).toFixed(1) + 's" d="' + curva(n) + '"/>').join('') +
+    '<circle cx="200" cy="60" r="20" style="fill:var(--noite);stroke:var(--linha-forte)"/><g transform="translate(186 46)">' + luaMini(0.25, 28) + '</g>' +
+    nos.map((n) => '<g class="hub-no"><rect x="' + (n[1] - 46) + '" y="' + (n[2] - 12) + '" width="92" height="24" rx="12"/><text x="' + n[1] + '" y="' + (n[2] + 4) + '">' + n[0] + '</text></g>').join('') +
+  '</svg>';
+}
+
 function pgInicio() {
-  const destinos = ['por-que-natural', 'programacao', 'profissionais', 'curitiba', 'comunidade', 'minha-jornada'].map((id) => C.paginas.find((p) => p.id === id));
-  return '' +
-  '<section class="heroi">' +
-    '<div class="heroi-lua">' +
-      '<div class="palco" id="palco" role="slider" tabindex="0" aria-label="Fase da lua. Arraste para os lados ou use as setas." aria-valuemin="1" aria-valuemax="4" aria-valuenow="3" aria-valuetext="Lua cheia">' +
-        '<canvas class="ceu" id="ceu" aria-hidden="true"></canvas><div class="halo" aria-hidden="true"></div>' + luaGrande('lua-heroi') +
+  const logado = estado.logado;
+  const premium = C.planos.find((p) => p.id === 'premium');
+  const hrefJor = '#' + (logado ? 'minha-jornada' : 'entrar');
+  const acaoJor = logado ? 'Abrir minha jornada' : 'Começar minha jornada';
+  const rotuloFase = { nova: 'Nova', crescente: 'Crescente', cheia: 'Cheia', minguante: 'Minguante' };
+  const abrev = { Segunda: 'Seg', 'Terça': 'Ter', Quarta: 'Qua', Quinta: 'Qui', Sexta: 'Sex', 'Sábado': 'Sáb', Domingo: 'Dom' };
+  const mins = C.aulas.map((a) => a.min), gratis = C.locais.filter((l) => /^(Gratuito|Grupo gratuito)/.test(l.beneficio)).length;
+  const crescente = C.fases.crescente;
+
+  const hero =
+  '<section class="tela heroi" aria-labelledby="h-hero">' +
+    '<canvas class="ceu" id="ceu" aria-hidden="true"></canvas>' +
+    '<div class="wrap heroi-grade">' +
+      '<div class="heroi-texto">' +
+        '<h1 class="display" id="h-hero" data-enter style="--i:0">Fitness natural para quem treina, pausa e volta.</h1>' +
+        '<p class="lide" data-enter style="--i:1">A Clipse junta aulas curtas, nutricionistas, personais, psicólogos e grupos de treino numa jornada em fases, sem pressa, sem comparação e sem promessa de resultado rápido.</p>' +
+        '<div class="acoes" data-enter style="--i:2"><a class="btn btn-pri" href="' + hrefJor + '">' + acaoJor + '</a><a class="btn btn-sec" href="#por-que-natural">Entender o que é natural</a></div>' +
+        '<ul class="fatos" data-enter style="--i:3">' +
+          '<li><strong>' + C.planos[0].valor + '</strong><span>para começar</span></li>' +
+          '<li><strong>' + premium.valor + '</strong><span>por mês no Premium</span></li>' +
+          '<li><strong>Curitiba</strong><span>piloto com ' + C.locais.length + ' locais</span></li>' +
+        '</ul>' +
       '</div>' +
-      '<div class="trilho" role="group" aria-label="As quatro fases">' +
-        C.ordemFases.map((id) => '<button type="button" class="trilho-item" data-acao="heroi-fase" data-fase="' + id + '" aria-pressed="false">' + luaMini(C.fases[id].p, 22) + '<span>' + { nova: 'Nova', crescente: 'Crescente', cheia: 'Cheia', minguante: 'Minguante' }[id] + '</span></button>').join('') +
+      '<div class="heroi-lua" data-enter style="--i:2">' +
+        '<div class="palco" id="palco" role="slider" tabindex="0" aria-label="Fase da lua. Arraste para os lados ou use as setas." aria-valuemin="1" aria-valuemax="4" aria-valuenow="3" aria-valuetext="Lua cheia">' +
+          '<div class="halo" aria-hidden="true"></div>' + luaGrande('lua-heroi') +
+        '</div>' +
+        '<div class="trilho" role="group" aria-label="As quatro fases">' +
+          C.ordemFases.map((id) => '<button type="button" class="trilho-item" data-acao="heroi-fase" data-fase="' + id + '" aria-pressed="false">' + luaMini(C.fases[id].p, 22) + '<span>' + rotuloFase[id] + '</span></button>').join('') +
+        '</div>' +
+        '<p class="legenda-fase" id="legenda-fase" aria-live="polite"></p>' +
       '</div>' +
-      '<p class="legenda-fase" id="legenda-fase" aria-live="polite"></p>' +
     '</div>' +
-    '<div class="heroi-texto">' +
-      '<h1 class="display">Como a lua, todo mundo tem fases.</h1>' +
-      '<p class="lide">A Clipse acompanha a sua jornada fitness natural com conteúdo, profissionais e pessoas por perto, sem pressa, sem comparação e sem promessa de resultado rápido.</p>' +
-      '<div class="acoes">' +
-        '<a class="btn btn-pri" href="#' + (estado.logado ? 'minha-jornada' : 'entrar') + '">' + (estado.logado ? 'Abrir minha jornada' : 'Começar minha jornada') + '</a>' +
-        '<a class="btn btn-sec" href="#por-que-natural">Por que natural</a>' +
-      '</div>' +
-    '</div>' +
-  '</section>' +
-  '<section class="bloco"><h2>O que tem aqui</h2>' +
-    '<ul class="destinos">' + destinos.map((p) => '<li><a href="#' + p.id + '"><span class="dest-nome">' + p.nome + '</span><span class="dest-linha">' + p.linha + '</span>' + ic('seta', 18) + '</a></li>').join('') + '</ul>' +
-  '</section>' +
-  '<section class="bloco"><h2>O jeito da Clipse</h2>' +
-    '<ul class="principios">' +
-      '<li><h3>Cada pessoa tem a própria jornada</h3><p>Sem promessa, sem atalho e sem ranking.</p></li>' +
-      '<li><h3>Ninguém precisa ser perfeito</h3><p>Pausar faz parte do ciclo. Voltar também.</p></li>' +
-      '<li><h3>O tempo faz parte do resultado</h3><p>Meses e anos contam a favor de quem segue.</p></li>' +
-      '<li><h3>A porta é aberta</h3><p>Academia, corrida, yoga, caminhada. Toda atividade cabe.</p></li>' +
-    '</ul>' +
-  '</section>' +
-  '<section class="bloco faixa">' +
-    '<div><h2>O piloto é em Curitiba</h2><p>Encontros gratuitos em parques, academias e clínicas alinhadas ao natural, e grupos para treinar perto de casa.</p><a class="btn btn-sec" href="#curitiba">Ver o mapa</a></div>' +
-    '<figure class="citacao"><blockquote>Registrar as minhas voltas me mostrou que eu nunca parei de verdade.</blockquote><figcaption>Aline, personagem ilustrativa. <a href="#historias">Ler as histórias de retorno</a></figcaption></figure>' +
-  '</section>' +
-  '<section class="bloco"><h2>Três planos</h2>' +
-    '<ul class="planos-resumo">' + C.planos.map((p) => '<li><strong>' + p.nome + '</strong><span>' + p.linha + '</span></li>').join('') + '</ul>' +
-    '<a class="btn btn-sec" href="#planos">Comparar os planos</a>' +
   '</section>';
+
+  const fases =
+  '<section class="tela fases" id="fases" aria-labelledby="h-fases"><div class="fases-pino"><div class="wrap fases-grade">' +
+    '<div class="fases-lua" aria-hidden="true"><div class="halo"></div>' + luaGrande('lua-fases') + '</div>' +
+    '<div class="fases-texto"><h2 id="h-fases">As quatro fases da Clipse</h2>' +
+      '<ol class="fases-passos" id="fases-passos">' + C.ordemFases.map((id, i) => { const f = C.fases[id];
+        return '<li' + (i === 0 ? ' class="on"' : '') + '><span class="fp-n">Fase ' + (i + 1) + ' de 4</span><h3>' + f.nome + '</h3><p class="fp-s">' + f.curta + '</p><p>' + f.texto + '</p></li>'; }).join('') + '</ol>' +
+      '<div class="fases-pontos" id="fases-pontos" aria-hidden="true"><i class="on"></i><i></i><i></i><i></i></div>' +
+    '</div>' +
+  '</div></div></section>';
+
+  const jornada =
+  '<section class="tela tela-claro" aria-labelledby="h-jor"><div class="wrap duas-col">' +
+    '<div class="col-texto"><h2 id="h-jor">Minha jornada, em fases e sem cobrança</h2>' +
+      '<p class="lide">Escolha a sua fase, faça um check-in de cinco minutos e veja os últimos 28 dias como a lua os veria. Dia sem registro fica em branco.</p>' +
+      '<ul class="ticks">' +
+        '<li>' + ic('check', 18) + '<span>Check-in com a energia do dia e uma linha sua</span></li>' +
+        '<li>' + ic('check', 18) + '<span>Pausa vira Lua nova, e cada volta vira um marco</span></li>' +
+        '<li>' + ic('check', 18) + '<span>Diário e objetivos em texto livre, só para você</span></li>' +
+      '</ul>' +
+      '<div class="acoes"><a class="btn btn-pri" href="' + hrefJor + '">' + acaoJor + '</a>' + (logado ? '' : '<button type="button" class="btn btn-sec" data-acao="exemplo">Ver com perfil de exemplo</button>') + '</div>' +
+    '</div>' +
+    '<div class="af-cena"><div class="app-frame" aria-hidden="true" inert>' +
+      '<div class="af-barra"><i></i><i></i><i></i><span>clipse / minha jornada</span></div>' +
+      '<div class="af-corpo">' +
+        '<div class="af-topo">' + luaMini(crescente.p, 52) + '<div><small>Oi, Ana</small><b>' + crescente.nome + '</b><small>' + crescente.curta + '</small></div></div>' +
+        '<div class="af-bloco"><p class="af-rotulo">Como está a energia hoje?</p><div class="af-chips"><span class="af-chip">Baixa</span><span class="af-chip">Ok</span><span class="af-chip on">Alta</span></div>' +
+          '<p class="af-rotulo">O que rolou hoje?</p><div class="af-chips"><span class="af-chip on">Treinei</span><span class="af-chip">Caminhei</span><span class="af-chip on">Alonguei</span><span class="af-chip">Descansei</span></div></div>' +
+        '<div class="af-bloco"><p class="af-rotulo">Últimos 28 dias</p><ol class="ciclo">' + cicloVitrine() + '</ol></div>' +
+      '</div>' +
+    '</div></div>' +
+  '</div></section>';
+
+  const cartao = (href, vis, t, d, loop) => '<li><a class="b-link" href="#' + href + '"' + (loop ? ' data-loop' : '') + '><div class="b-vis" aria-hidden="true">' + vis + '</div><div class="b-txt"><h3>' + t + '</h3><p>' + d + '</p></div></a></li>';
+  const reune =
+  '<section class="tela" aria-labelledby="h-reune"><div class="wrap">' +
+    '<div class="cab-tela"><h2 id="h-reune">O que a Clipse reúne</h2><p class="lide">Conteúdo, pessoas e lugares, todos ligados à fase em que você está.</p></div>' +
+    '<ul class="bento">' +
+      cartao('por-que-natural', C.aulas.slice(0, 3).map((a) => '<div class="bv-aula"><span class="aula-ic">' + ic('play', 13) + '</span><span>' + a.t + '</span><small>' + a.min + ' min</small></div>').join(''),
+        'Aulas curtas', 'Vídeos de ' + Math.min.apply(null, mins) + ' a ' + Math.max.apply(null, mins) + ' minutos, gravados por profissionais, e um guia digital em cinco capítulos.') +
+      cartao('programacao', '<div class="bv-semana">' + C.semana.map((e) => '<div class="bv-dia"><i class="' + (e.tipo === 'Presencial' ? 'pr' : e.tipo === 'Ao vivo' ? 'vv' : '') + '"></i><span>' + abrev[e.dia] + '</span></div>').join('') + '</div>',
+        'Programação da semana', 'Aula na segunda, corrida no parque na quinta, encontro no sábado. Você participa do que couber.') +
+      cartao('profissionais', '<div class="bv-gente">' + C.profissionais.slice(0, 5).map((p) => '<div class="avatar av-' + p.area.toLowerCase().normalize('NFD').replace(/[^a-z]/g, '') + '">' + iniciais(p.nome) + '</div>').join('') + '</div><div class="bv-papeis"><span class="selo">Nutrição</span><span class="selo">Treino</span><span class="selo">Psicologia</span></div>',
+        'Profissionais', 'Nutricionistas, personal trainers e psicólogos que respeitam o ponto em que você está.') +
+      cartao('minha-jornada', hubSVG(), 'Tudo ligado à sua fase', 'Em cada fase a Clipse sugere aulas, profissionais, grupos e encontros diferentes.', true) +
+    '</ul>' +
+  '</div></section>';
+
+  const manifesto =
+  '<section class="tela manifesto" id="manifesto" aria-labelledby="h-mani"><div class="manifesto-pino"><div class="wrap">' +
+    '<h2 id="h-mani">O jeito da Clipse</h2>' +
+    '<p class="manifesto-texto" id="manifesto-texto">' + MANIFESTO.split(' ').map((w) => '<span class="w">' + w + '</span>').join(' ') + '</p>' +
+  '</div></div></section>';
+
+  const curitiba =
+  '<section class="tela" aria-labelledby="h-cur"><div class="wrap duas-col">' +
+    '<div class="col-texto"><h2 id="h-cur">O piloto é em Curitiba</h2>' +
+      '<p class="lide">Encontros gratuitos em parques, academias e clínicas alinhadas ao natural, e grupos para treinar perto de casa.</p>' +
+      '<ul class="numeros"><li><strong>' + C.locais.length + '</strong><span>locais no mapa</span></li><li><strong>' + C.grupos.length + '</strong><span>grupos de treino</span></li><li><strong>' + gratis + '</strong><span>encontros gratuitos</span></li></ul>' +
+      '<a class="btn btn-sec" href="#curitiba">Ver o mapa de Curitiba</a>' +
+    '</div>' +
+    '<a class="mapa-card" href="#curitiba" aria-label="Abrir o mapa de Curitiba" data-loop>' + mapaHome() + '</a>' +
+  '</div></section>';
+
+  const historias =
+  '<section class="tela" aria-labelledby="h-his"><div class="wrap hist-grade">' +
+    '<div><h2 id="h-his">Histórias de retorno</h2>' +
+      '<figure class="hist-quote"><blockquote>Registrar as minhas voltas me mostrou que eu nunca parei de verdade.</blockquote><figcaption>Aline, personagem ilustrativa. <a href="#historias">Ler as histórias de retorno</a></figcaption></figure></div>' +
+    '<div class="hist-lista">' + C.historias.slice(0, 3).map((h) => '<a class="hist-card" href="#historias"><p class="hist-fases">' + luaMini(C.fases[h.de].p, 22) + ic('seta', 14) + luaMini(C.fases[h.para].p, 22) + '<span>' + h.pausa + '</span></p><h3>' + h.t + '</h3><p class="meta">' + h.quem + '</p></a>').join('') + '</div>' +
+  '</div></section>';
+
+  const planos =
+  '<section class="tela tela-claro" aria-labelledby="h-pl"><div class="wrap">' +
+    '<div class="cab-tela"><h2 id="h-pl">Três planos, um deles grátis</h2><p class="lide">Dá para começar de graça e mudar quando fizer sentido. Sem fidelidade.</p></div>' +
+    '<div class="planos-m">' + C.planos.map((p) => '<a class="plano-m' + (p.id === 'premium' ? ' pre' : '') + '" href="#planos"><h3>' + p.nome + '</h3><p class="plano-valor"><strong>' + p.valor + '</strong>' + (p.periodo ? '<span>' + p.periodo + '</span>' : '') + '</p><p class="meta">' + p.linha + '</p><ul class="plano-itens">' +
+      p.itens.slice(0, 4).map((i) => '<li>' + ic('check', 16) + '<span>' + i + '</span></li>').join('') + '</ul></a>').join('') + '</div>' +
+    '<a class="btn btn-sec" href="#planos">Comparar os planos</a>' +
+  '</div></section>';
+
+  const fecho =
+  '<section class="tela fecho" aria-labelledby="h-fecho">' +
+    '<div class="fecho-lua" aria-hidden="true"><div class="halo"></div>' + luaGrande('lua-fecho') + '</div>' +
+    '<div class="wrap"><div class="fecho-in"><h2 class="display" id="h-fecho">Como a lua, todo mundo tem fases.</h2><p class="lide">Escolha a sua e comece pelo que couber hoje.</p>' +
+      '<div class="acoes"><a class="btn btn-pri" href="' + hrefJor + '">' + acaoJor + '</a><a class="btn btn-sec" href="#planos">Ver os planos</a></div></div></div>' +
+  '</section>';
+
+  return hero + fases + jornada + reune + manifesto + curitiba + historias + planos + fecho;
 }
 
 function linhaAula(a) {
@@ -540,11 +647,17 @@ const FORMA_PINO = {
   saude: (x, y) => '<path class="pino-forma" d="M' + (x - 2.6) + ' ' + (y - 7.5) + 'h5.2v4.9h4.9v5.2h-4.9v4.9h-5.2v-4.9h-4.9v-5.2h4.9z"/>'
 };
 function locaisVisiveis() { return C.locais.filter((l) => filtroLocal === 'todos' || l.cat === filtroLocal); }
-function mapaSVG() {
-  return '<svg class="mapa" viewBox="0 0 320 300" role="group" aria-label="Mapa esquemático de Curitiba com os locais parceiros">' +
-    '<g class="mapa-aneis" aria-hidden="true"><circle cx="160" cy="160" r="46"/><circle cx="160" cy="160" r="92"/><circle cx="160" cy="160" r="138"/></g>' +
+function mapaBase() {
+  return '<g class="mapa-aneis" aria-hidden="true"><circle cx="160" cy="160" r="46"/><circle cx="160" cy="160" r="92"/><circle cx="160" cy="160" r="138"/></g>' +
     '<g class="mapa-bairros" aria-hidden="true">' + C.bairrosMapa.map((b) => '<text x="' + b.x + '" y="' + b.y + '">' + b.t + '</text>').join('') + '</g>' +
-    '<g class="mapa-norte" aria-hidden="true"><path d="M296 34V16m0 0-5 7m5-7 5 7"/><text x="296" y="48">N</text></g>' +
+    '<g class="mapa-norte" aria-hidden="true"><path d="M296 34V16m0 0-5 7m5-7 5 7"/><text x="296" y="48">N</text></g>';
+}
+function mapaHome() {
+  return '<svg class="mapa" viewBox="0 0 320 300" aria-hidden="true" focusable="false">' + mapaBase() +
+    C.locais.map((l, i) => '<g class="pino-h" style="--d:' + (i * 0.2).toFixed(1) + 's"><circle class="pino-onda" cx="' + l.x + '" cy="' + l.y + '" r="7"/>' + FORMA_PINO[l.cat](l.x, l.y) + '</g>').join('') + '</svg>';
+}
+function mapaSVG() {
+  return '<svg class="mapa" viewBox="0 0 320 300" role="group" aria-label="Mapa esquemático de Curitiba com os locais parceiros">' + mapaBase() +
     locaisVisiveis().map((l) => '<g class="pino' + (l.id === selLocal ? ' on' : '') + '" data-acao="local" data-id="' + l.id + '" role="button" tabindex="0" aria-label="' + esc(l.nome) + ', ' + esc(l.bairro) + '" aria-pressed="' + (l.id === selLocal) + '">' +
       '<circle class="pino-toque" cx="' + l.x + '" cy="' + l.y + '" r="15"/>' + (l.id === selLocal ? '<circle class="pino-anel" cx="' + l.x + '" cy="' + l.y + '" r="13"/>' : '') + FORMA_PINO[l.cat](l.x, l.y) + '</g>').join('') +
   '</svg>';
@@ -589,7 +702,7 @@ function pgComunidade() {
 }
 
 /* ── Minha jornada ── */
-function faseNoDia(dia) { let f = null; for (const h of estado.historico) { if (h.data <= dia) f = h.fase; else break; } return f; }
+function faseNoDia(dia, hist) { let f = null; for (const h of (hist || estado.historico)) { if (h.data <= dia) f = h.fase; else break; } return f; }
 function desdeQuando() { const h = estado.historico; for (let i = h.length - 1; i >= 0; i--) { if (h[i].fase === estado.fase) { let j = i; while (j > 0 && h[j - 1].fase === estado.fase) j--; return h[j].data; } } return hojeISO(); }
 const SUGESTOES = {
   cheia: [['aula', 'a8', 'Aula: Treinar para os próximos 30 anos'], ['pg', 'comunidade', 'Grupos para treinar junto'], ['pg', 'programacao', 'A programação desta semana']],
@@ -821,7 +934,8 @@ function pintarCeu(cv) {
   cv.width = Math.round(r.width * dpr); cv.height = Math.round(r.height * dpr);
   const g = cv.getContext('2d'); g.scale(dpr, dpr);
   let s = 11; const rnd = () => { s = (s * 1664525 + 1013904223) % 4294967296; return s / 4294967296; };
-  for (let i = 0; i < 80; i++) {
+  const n = Math.min(260, Math.round(r.width * r.height / 8000));
+  for (let i = 0; i < n; i++) {
     const x = rnd() * r.width, y = rnd() * r.height, t = rnd();
     g.globalAlpha = 0.12 + t * 0.5; g.fillStyle = i % 6 === 0 ? '#C6A8FF' : '#F5F0FC';
     g.beginPath(); g.arc(x, y, 0.4 + t * 1.0, 0, 6.3); g.fill();
@@ -919,8 +1033,52 @@ function fecharPopover() { const p = $('#popover'); if (p && !p.hidden) { p.hidd
 
 /* ───────── Rotas ───────── */
 function rotaDaUrl() { const h = (location.hash || '').replace(/^#/, ''); return PAGINAS[h] ? h : 'inicio'; }
+/* ───────── Momentos da home: a rolagem só move o que está dentro da própria seção ───────── */
+let semMov = null;
+function desligarMov() { if (semMov) { window.removeEventListener('scroll', semMov); window.removeEventListener('resize', semMov); semMov = null; } }
+const limitar = (v) => Math.min(1, Math.max(0, v));
+function progresso(el) { const total = el.offsetHeight - window.innerHeight; return total > 0 ? limitar(-el.getBoundingClientRect().top / total) : 0; }
+function ligarMovimentos() {
+  desligarMov();
+  const fases = $('#fases'), mani = $('#manifesto');
+  if (!fases && !mani) return;
+  if (reduzMovimento()) { pintarLuaGrande('lua-fases', 0.5); return; }
+  const passos = $$('#fases-passos li'), pontos = $$('#fases-pontos i'), palavras = $$('.w', mani || document);
+  const ult = palavras.map(() => -1);
+  let idxAnt = -1;
+  const atualizar = () => {
+    if (fases) {
+      const s = progresso(fases) * 4, i = Math.min(3, Math.floor(s));
+      const f = limitar((s - i - 0.45) / 0.55), suave = f * f * (3 - 2 * f);
+      pintarLuaGrande('lua-fases', (i + (i < 3 ? suave : 0)) * 0.25);
+      if (i !== idxAnt) { idxAnt = i; passos.forEach((el, k) => el.classList.toggle('on', k === i)); pontos.forEach((el, k) => el.classList.toggle('on', k === i)); }
+    }
+    if (mani) {
+      const alvo = limitar((progresso(mani) - 0.1) / 0.72) * palavras.length;
+      palavras.forEach((w, k) => { const l = Math.round(limitar(alvo - k) * 20) / 20; if (l !== ult[k]) { ult[k] = l; w.style.setProperty('--l', l); } });
+    }
+  };
+  let raf = 0;
+  semMov = () => { if (!raf) raf = requestAnimationFrame(() => { raf = 0; atualizar(); }); };
+  window.addEventListener('scroll', semMov, { passive: true });
+  window.addEventListener('resize', semMov);
+  atualizar();
+}
+/* Loops curtos dos cards: começam quando o card aparece, repetem duas vezes e recomeçam no hover */
+function ligarLoops() {
+  const els = $$('[data-loop]'); if (!els.length) return;
+  if (!('IntersectionObserver' in window)) { els.forEach((e) => e.classList.add('vivo')); return; }
+  const io = new IntersectionObserver((es) => es.forEach((en) => { if (en.isIntersecting) { en.target.classList.add('vivo'); io.unobserve(en.target); } }), { threshold: 0.4 });
+  els.forEach((e) => io.observe(e));
+}
+function tituloDaPagina() {
+  const p = C.paginas.find((x) => x.id === rota);
+  document.title = rota === 'inicio' ? 'Clipse: fitness natural para quem treina, pausa e volta' : (p ? p.nome : rota === 'entrar' ? 'Entrar' : 'Clipse') + ' | Clipse';
+}
+
 function aposPintar() {
-  if (rota === 'inicio') montarHeroi(); else heroi = null;
+  if (rota === 'inicio') { montarHeroi(); pintarLuaGrande('lua-fecho', C.fases.crescente.p); ligarMovimentos(); ligarLoops(); }
+  else { heroi = null; desligarMov(); }
   if (rota === 'minha-jornada' && estado.logado) {
     const alvo = C.fases[estado.fase].p;
     if (animarLuaDe != null && !reduzMovimento()) {
@@ -935,8 +1093,8 @@ function navegar(primeira) {
   if (r === 'entrar' && estado.logado) { location.hash = 'minha-jornada'; return; }
   Folha.fechar(); fecharPopover();
   rota = r;
-  main.innerHTML = '<div class="pagina pg-' + r + (primeira ? '' : ' troca') + '">' + PAGINAS[r]() + '</div>';
-  aposPintar(); marcarNav(); atualizarConta();
+  main.innerHTML = '<div class="pagina pg-' + r + ' nova' + (primeira ? '' : ' troca') + '">' + PAGINAS[r]() + '</div>';
+  tituloDaPagina(); aposPintar(); marcarNav(); atualizarConta();
   if (!primeira) { window.scrollTo(0, 0); try { main.focus({ preventScroll: true }); } catch (e) {} }
 }
 function pintar() {
@@ -1197,6 +1355,11 @@ document.addEventListener('keydown', (e) => {
     const abas = $$('[role="tab"]', t.parentNode), i = abas.indexOf(t), n = abas[(i + (e.key === 'ArrowRight' ? 1 : abas.length - 1)) % abas.length];
     if (n) { e.preventDefault(); n.click(); }
   }
+});
+document.addEventListener('pointerover', (e) => {
+  const c = e.target.closest && e.target.closest('[data-loop]');
+  if (!c || !c.classList.contains('vivo') || c.contains(e.relatedTarget)) return;
+  c.classList.remove('vivo'); void c.offsetWidth; c.classList.add('vivo');
 });
 document.addEventListener('error', (e) => { const t = e.target; if (t && t.tagName === 'IMG' && t.dataset && t.dataset.some) t.remove(); }, true);
 window.addEventListener('hashchange', () => navegar(false));
