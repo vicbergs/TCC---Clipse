@@ -510,6 +510,7 @@ input:focus-visible + label { outline: 2px solid var(--lua); outline-offset: 3px
 
 /* Momento 1: as quatro fases, a lua gira com a rolagem dentro da própria seção */
 .fases, .manifesto { height: 200vh; height: 200svh; min-height: 0; padding: 0; display: block; align-content: start; }
+.fases { height: 150vh; height: 150svh; }
 .fases-pino, .manifesto-pino { position: sticky; top: 0; height: 100vh; height: 100svh; display: grid; align-content: center; padding: var(--barra) 0 var(--base); }
 .fases-grade { display: grid; gap: 20px; justify-items: center; align-items: center; }
 .fases-lua { position: relative; width: min(52vw, 30svh, 300px); display: grid; place-items: center; }

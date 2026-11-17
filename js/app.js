@@ -1034,8 +1034,8 @@ function fecharPopover() { const p = $('#popover'); if (p && !p.hidden) { p.hidd
 /* ───────── Rotas ───────── */
 function rotaDaUrl() { const h = (location.hash || '').replace(/^#/, ''); return PAGINAS[h] ? h : 'inicio'; }
 /* ───────── Momentos da home: a rolagem só move o que está dentro da própria seção ───────── */
-let semMov = null;
-function desligarMov() { if (semMov) { window.removeEventListener('scroll', semMov); window.removeEventListener('resize', semMov); semMov = null; } }
+let semMov = null, luaFases = null;
+function desligarMov() { if (luaFases) { luaFases.parar(); luaFases = null; } if (semMov) { window.removeEventListener('scroll', semMov); window.removeEventListener('resize', semMov); semMov = null; } }
 const limitar = (v) => Math.min(1, Math.max(0, v));
 function progresso(el) { const total = el.offsetHeight - window.innerHeight; return total > 0 ? limitar(-el.getBoundingClientRect().top / total) : 0; }
 function ligarMovimentos() {
@@ -1046,12 +1046,14 @@ function ligarMovimentos() {
   const passos = $$('#fases-passos li'), pontos = $$('#fases-pontos i'), palavras = $$('.w', mani || document);
   const ult = palavras.map(() => -1);
   let idxAnt = -1;
+  luaFases = new Mola(0, (p) => pintarLuaGrande('lua-fases', p), 0.0006);
   const atualizar = () => {
     if (fases) {
-      const s = progresso(fases) * 4, i = Math.min(3, Math.floor(s));
-      const f = limitar((s - i - 0.45) / 0.55), suave = f * f * (3 - 2 * f);
-      pintarLuaGrande('lua-fases', (i + (i < 3 ? suave : 0)) * 0.25);
-      if (i !== idxAnt) { idxAnt = i; passos.forEach((el, k) => el.classList.toggle('on', k === i)); pontos.forEach((el, k) => el.classList.toggle('on', k === i)); }
+      const i = Math.min(3, Math.floor(progresso(fases) * 4));
+      if (i !== idxAnt) {
+        if (idxAnt < 0) luaFases.fixar(i * 0.25); else luaFases.ir(i * 0.25, { amortecimento: 1, resposta: 0.5 });
+        idxAnt = i; passos.forEach((el, k) => el.classList.toggle('on', k === i)); pontos.forEach((el, k) => el.classList.toggle('on', k === i));
+      }
     }
     if (mani) {
       const alvo = limitar((progresso(mani) - 0.1) / 0.72) * palavras.length;
