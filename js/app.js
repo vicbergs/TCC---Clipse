@@ -1,0 +1,1214 @@
+/* Clipse — protótipo navegável. Sem bibliotecas: molas, gestos e rotas escritos à mão. */
+(function () {
+'use strict';
+
+const C = window.CLIPSE;
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
+const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const reduzMovimento = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const telaLarga = () => window.matchMedia('(min-width: 760px)').matches;
+
+/* ───────── Datas ───────── */
+const iso = (d) => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+const hojeISO = () => iso(new Date());
+const deISO = (s) => { const p = String(s).split('-').map(Number); return new Date(p[0], (p[1] || 1) - 1, p[2] || 1); };
+const diasAtras = (n) => { const d = new Date(); d.setDate(d.getDate() - n); return iso(d); };
+const dataCurta = (s) => deISO(s).toLocaleDateString('pt-BR', { day: 'numeric', month: 'short' }).replace('.', '');
+const dataLonga = (s) => deISO(s).toLocaleDateString('pt-BR', { day: 'numeric', month: 'long' });
+const diasEntre = (a, b) => Math.max(0, Math.round((deISO(b) - deISO(a)) / 864e5));
+const preco = (v) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(v) || 0);
+const novoId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+
+/* ───────── Lua: desenhada como se vê de Curitiba (hemisfério sul: a crescente acende pela esquerda) ───────── */
+function caminhoLua(p, r, cx, cy) {
+  p = ((p % 1) + 1) % 1;
+  const k = Math.cos(2 * Math.PI * p);
+  const rx = Math.max(0.01, Math.abs(k) * r);
+  const cresce = p < 0.5;
+  const gibosa = k < 0;
+  const limbo = cresce ? 0 : 1;
+  const term = cresce ? (gibosa ? 0 : 1) : (gibosa ? 1 : 0);
+  const f = (n) => n.toFixed(2);
+  return 'M' + f(cx) + ',' + f(cy - r) + 'A' + f(r) + ',' + f(r) + ' 0 0 ' + limbo + ' ' + f(cx) + ',' + f(cy + r) +
+         'A' + f(rx) + ',' + f(r) + ' 0 0 ' + term + ' ' + f(cx) + ',' + f(cy - r) + 'Z';
+}
+function luaMini(p, tam, classe) {
+  return '<svg class="lua-mini ' + (classe || '') + '" width="' + tam + '" height="' + tam + '" viewBox="0 0 24 24" aria-hidden="true">' +
+    '<circle class="lm-sombra" cx="12" cy="12" r="10.5"/><path class="lm-luz" d="' + caminhoLua(p, 10.5, 12, 12) + '"/></svg>';
+}
+function luaGrande(id) {
+  return '<svg class="lua-g" id="' + id + '" viewBox="0 0 200 200" aria-hidden="true">' +
+    '<defs><clipPath id="' + id + '-clip"><path id="' + id + '-clip-p" d=""/></clipPath></defs>' +
+    '<circle class="lg-sombra" cx="100" cy="100" r="90"/>' +
+    '<path class="lg-luz" id="' + id + '-luz" d=""/>' +
+    '<g class="lg-crateras" clip-path="url(#' + id + '-clip)"><circle cx="70" cy="68" r="16"/><circle cx="130" cy="94" r="9"/><circle cx="92" cy="134" r="22"/><circle cx="142" cy="144" r="7"/><circle cx="120" cy="46" r="6"/></g>' +
+    '</svg>';
+}
+function pintarLuaGrande(id, p) {
+  const a = $('#' + id + '-luz'), b = $('#' + id + '-clip-p');
+  if (!a || !b) return;
+  const d = caminhoLua(p, 90, 100, 100);
+  a.setAttribute('d', d); b.setAttribute('d', d);
+}
+
+/* ───────── Ícones ───────── */
+const IC = {
+  inicio: '<path d="M4 11.5 12 4l8 7.5V20a1 1 0 0 1-1 1h-4.5v-6h-5v6H5a1 1 0 0 1-1-1z"/>',
+  folha: '<path d="M5 19C5 11 10 6 19 5c0 9-5 14-14 14z"/><path d="M5 19c3-5 6-8 10-10"/>',
+  pessoas: '<circle cx="9" cy="8.5" r="3.2"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><circle cx="17.2" cy="9.5" r="2.4"/><path d="M16.4 14.3c2.6.3 4.6 2.6 4.6 5.7"/>',
+  mais: '<circle cx="5" cy="12" r="1.5" fill="currentColor"/><circle cx="12" cy="12" r="1.5" fill="currentColor"/><circle cx="19" cy="12" r="1.5" fill="currentColor"/>',
+  fechar: '<path d="M6 6l12 12M18 6 6 18"/>',
+  seta: '<path d="M9 5l7 7-7 7"/>',
+  baixo: '<path d="M6 9l6 6 6-6"/>',
+  play: '<path d="M8 5.5v13l11-6.5z" fill="currentColor"/>',
+  cadeado: '<rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>',
+  check: '<path d="M5 12.5l4.5 4.5L19 7.5"/>',
+  soma: '<path d="M12 5v14M5 12h14"/>',
+  marca: '<path d="M7 4h10a1 1 0 0 1 1 1v15l-6-4-6 4V5a1 1 0 0 1 1-1z"/>'
+};
+const ic = (n, t) => '<svg class="ic" width="' + (t || 22) + '" height="' + (t || 22) + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + IC[n] + '</svg>';
+
+/* ───────── Mola: amortecimento (1 = sem quique) + resposta em segundos. Interrompível e sensível à velocidade. ───────── */
+class Mola {
+  constructor(valor, aoMudar, eps) {
+    this.x = valor; this.v = 0; this.alvo = valor; this.aoMudar = aoMudar; this.eps = eps || 0.5;
+    this.raf = 0; this.k = 0; this.c = 0; this.aoParar = null; this.t = 0;
+    this.passo = this.passo.bind(this);
+  }
+  ir(alvo, o) {
+    o = o || {};
+    this.alvo = alvo;
+    if (typeof o.velocidade === 'number' && isFinite(o.velocidade)) this.v = o.velocidade;
+    const w = (2 * Math.PI) / (o.resposta || 0.4);
+    this.k = w * w; this.c = 2 * (o.amortecimento == null ? 1 : o.amortecimento) * w;
+    this.aoParar = o.aoParar || null;
+    if (reduzMovimento()) { this.terminar(); return; }
+    if (!this.raf) { this.t = performance.now(); this.raf = requestAnimationFrame(this.passo); }
+  }
+  terminar() {
+    this.parar(); this.x = this.alvo; this.v = 0; this.aoMudar(this.x);
+    const f = this.aoParar; this.aoParar = null; if (f) f();
+  }
+  fixar(x) { this.parar(); this.x = x; this.v = 0; this.alvo = x; this.aoParar = null; this.aoMudar(x); }
+  parar() { if (this.raf) cancelAnimationFrame(this.raf); this.raf = 0; }
+  passo(agora) {
+    const dt = Math.min(0.064, Math.max(0.001, (agora - this.t) / 1000)); this.t = agora;
+    const n = Math.ceil(dt / 0.004), h = dt / n;
+    for (let i = 0; i < n; i++) {
+      const a = -this.k * (this.x - this.alvo) - this.c * this.v;
+      this.v += a * h; this.x += this.v * h;
+    }
+    if (Math.abs(this.v) < this.eps * 4 && Math.abs(this.x - this.alvo) < this.eps) { this.raf = 0; this.terminar(); return; }
+    this.aoMudar(this.x);
+    this.raf = requestAnimationFrame(this.passo);
+  }
+}
+/* Projeção de momento (decaimento exponencial) e elástico de borda */
+const projetar = (v, taxa) => { taxa = taxa || 0.998; return (v / 1000) * taxa / (1 - taxa); };
+const elastico = (passou, dim, c) => { c = c || 0.55; return (passou * dim * c) / (dim + c * Math.abs(passou)); };
+function velocidadeDe(hist) {
+  if (hist.length < 2) return 0;
+  const fim = hist[hist.length - 1];
+  let ini = hist[0];
+  for (let i = hist.length - 2; i >= 0; i--) { ini = hist[i]; if (fim.t - hist[i].t > 80) break; }
+  const dt = (fim.t - ini.t) / 1000;
+  return dt > 0.001 ? (fim.p - ini.p) / dt : 0;
+}
+
+/* ───────── Estado da jornada (fica neste navegador) ───────── */
+const CHAVE = 'clipse.v1';
+const PADRAO = () => ({
+  v: 1, usuario: null, logado: false, exemplo: false, plano: 'gratuito', fase: null,
+  historico: [], checkins: {}, diario: [], objetivos: [], voltas: [],
+  salvos: { profissionais: [], locais: [], grupos: [], eventos: [] }, aulas: [], parceiro: null
+});
+let estado = PADRAO();
+function lerLocal() { try { const t = localStorage.getItem(CHAVE); return t ? JSON.parse(t) : null; } catch (e) { return null; } }
+function normalizar(d) {
+  const b = PADRAO();
+  if (!d || typeof d !== 'object') return b;
+  const o = Object.assign(b, d);
+  o.salvos = Object.assign(PADRAO().salvos, d.salvos || {});
+  ['historico', 'diario', 'objetivos', 'voltas', 'aulas'].forEach((k) => { if (!Array.isArray(o[k])) o[k] = []; });
+  Object.keys(o.salvos).forEach((k) => { if (!Array.isArray(o.salvos[k])) o.salvos[k] = []; });
+  if (!o.checkins || typeof o.checkins !== 'object') o.checkins = {};
+  o.historico = o.historico.filter((h) => h && C.fases[h.fase] && /^\d{4}-\d{2}-\d{2}$/.test(h.data)).sort((a, b) => (a.data < b.data ? -1 : a.data > b.data ? 1 : 0));
+  if (!o.usuario || typeof o.usuario !== 'object') { o.usuario = null; o.logado = false; }
+  if (!C.fases[o.fase]) o.fase = o.usuario ? 'crescente' : null;
+  if (!NIVEL.hasOwnProperty(o.plano)) o.plano = 'gratuito';
+  return o;
+}
+function gravar() { try { localStorage.setItem(CHAVE, JSON.stringify(estado)); return true; } catch (e) { return false; } }
+
+const NIVEL = { gratuito: 0, premium: 1, diamond: 2 };
+const planoAtual = () => (estado.logado ? estado.plano : 'gratuito');
+const temAcesso = (n) => NIVEL[planoAtual()] >= NIVEL[n];
+const nomePlano = (id) => (C.planos.find((p) => p.id === id) || { nome: id }).nome;
+const primeiroNome = () => String((estado.usuario && estado.usuario.nome) || '').split(' ')[0];
+
+function perfilExemplo() {
+  const e = PADRAO();
+  e.usuario = { nome: 'Ana', email: '', desde: diasAtras(96) };
+  e.logado = true; e.exemplo = true; e.plano = 'premium'; e.fase = 'crescente';
+  e.historico = [
+    { fase: 'crescente', data: diasAtras(96) }, { fase: 'cheia', data: diasAtras(80) },
+    { fase: 'minguante', data: diasAtras(41) }, { fase: 'nova', data: diasAtras(27), motivo: 'Trabalho', nota: 'Fechamento de projeto, volto depois.' },
+    { fase: 'crescente', data: diasAtras(6) }
+  ];
+  e.voltas = [{ data: diasAtras(6), dias: 21 }];
+  e.checkins[diasAtras(6)] = { energia: 'baixa', fez: ['Caminhei'], nota: 'Vinte minutos no Barigui. Já valeu.' };
+  e.checkins[diasAtras(4)] = { energia: 'ok', fez: ['Treinei'], nota: 'Metade da carga de antes.' };
+  e.checkins[diasAtras(3)] = { energia: 'ok', fez: ['Descansei'], nota: '' };
+  e.checkins[diasAtras(1)] = { energia: 'alta', fez: ['Treinei', 'Alonguei'], nota: 'O corpo lembrou.' };
+  e.checkins[diasAtras(38)] = { energia: 'baixa', fez: ['Caminhei'], nota: '' };
+  e.checkins[diasAtras(33)] = { energia: 'ok', fez: ['Treinei'], nota: '' };
+  e.diario = [
+    { id: 'd2', data: diasAtras(1), texto: 'Primeira semana de volta. Achei que ia estar pior. Não comparei com março e isso ajudou.' },
+    { id: 'd1', data: diasAtras(27), texto: 'Parando por umas semanas por causa do trabalho. Deixo anotado para lembrar que foi uma escolha.' }
+  ];
+  e.objetivos = [
+    { id: 'o1', texto: 'Treinar duas vezes por semana, mesmo que curto', rotina: false },
+    { id: 'o2', texto: 'Dormir antes da meia-noite', rotina: true },
+    { id: 'o3', texto: 'Voltar a correr 5 km sem pressa de tempo', rotina: false }
+  ];
+  e.salvos = { profissionais: ['pr3'], locais: ['l1', 'l8'], grupos: ['g2'], eventos: ['e4', 'm2'] };
+  e.aulas = ['a1', 'a2', 'a4'];
+  return e;
+}
+
+/* ───────── Aviso curto ───────── */
+let tAviso = 0;
+function avisar(txt) {
+  const el = $('#aviso'); if (!el) return;
+  el.textContent = txt; el.classList.add('on');
+  clearTimeout(tAviso); tAviso = setTimeout(() => el.classList.remove('on'), 3600);
+}
+
+/* ───────── Folha: sobe de baixo no celular (arrastável), vira diálogo central em tela larga ───────── */
+const Folha = (function () {
+  let el, corpo, tit, cab, veu, mola;
+  let aberta = false, h = 1, gatilho = null, largo = false, arr = null;
+  function pintar(y) {
+    const t = Math.min(1, Math.max(0, y / h));
+    if (largo) { el.style.transform = 'translate(-50%, calc(-50% + ' + (t * 26).toFixed(1) + 'px)) scale(' + (1 - t * 0.04).toFixed(4) + ')'; el.style.opacity = (1 - t).toFixed(3); }
+    else { el.style.transform = 'translate3d(0,' + y.toFixed(1) + 'px,0)'; el.style.opacity = '1'; }
+    veu.style.opacity = (1 - t).toFixed(3);
+  }
+  function montar() {
+    el = $('#folha'); corpo = $('#folha-corpo'); tit = $('#folha-titulo'); cab = $('#folha-cabeca'); veu = $('#veu');
+    mola = new Mola(0, pintar, 0.5);
+    veu.addEventListener('click', () => fechar());
+    cab.addEventListener('pointerdown', (e) => {
+      if (largo || !aberta || e.button || e.target.closest('button')) return;
+      try { cab.setPointerCapture(e.pointerId); } catch (x) {}
+      mola.parar();
+      arr = { id: e.pointerId, desloc: e.clientY - mola.x, hist: [{ t: e.timeStamp, p: e.clientY }] };
+    });
+    cab.addEventListener('pointermove', (e) => {
+      if (!arr || e.pointerId !== arr.id) return;
+      let y = e.clientY - arr.desloc;
+      if (y < 0) y = -elastico(-y, h);
+      mola.x = y; mola.v = 0; pintar(y);
+      arr.hist.push({ t: e.timeStamp, p: e.clientY }); if (arr.hist.length > 8) arr.hist.shift();
+    });
+    const solta = (e) => {
+      if (!arr || e.pointerId !== arr.id) return;
+      const v = velocidadeDe(arr.hist); arr = null;
+      if (mola.x + projetar(v) > h * 0.5) fechar(v);
+      else mola.ir(0, { velocidade: v, amortecimento: Math.abs(v) > 300 ? 0.8 : 1, resposta: 0.3 });
+    };
+    cab.addEventListener('pointerup', solta); cab.addEventListener('pointercancel', solta);
+    document.addEventListener('keydown', (e) => {
+      if (!aberta) return;
+      if (e.key === 'Escape') { e.preventDefault(); fechar(); return; }
+      if (e.key !== 'Tab') return;
+      const f = $$('a[href],button:not([disabled]),input:not([disabled]):not([type="hidden"]),select,textarea,summary', el).filter((x) => x.offsetParent !== null);
+      if (!f.length) { e.preventDefault(); return; }
+      const pri = f[0], ult = f[f.length - 1], at = document.activeElement;
+      if (e.shiftKey && (at === pri || at === el)) { e.preventDefault(); ult.focus(); }
+      else if (!e.shiftKey && at === ult) { e.preventDefault(); pri.focus(); }
+    });
+  }
+  function abrir(o) {
+    const visivel = !el.hidden;
+    if (!visivel) gatilho = document.activeElement;
+    tit.textContent = o.titulo || '';
+    corpo.innerHTML = o.html || ''; corpo.scrollTop = 0;
+    el.hidden = false; veu.hidden = false;
+    document.documentElement.classList.add('travado');
+    largo = telaLarga(); el.classList.toggle('largo', largo);
+    h = largo ? 100 : Math.max(1, el.offsetHeight);
+    if (!visivel) { mola.x = h; mola.v = 0; pintar(h); }
+    aberta = true;
+    mola.ir(0, { amortecimento: 1, resposta: 0.36 });
+    if (o.aoMontar) o.aoMontar(corpo);
+    el.focus({ preventScroll: true });
+  }
+  function fechar(vel) {
+    if (!aberta) return;
+    aberta = false;
+    mola.ir(h, { velocidade: vel, amortecimento: 1, resposta: 0.3, aoParar: () => {
+      el.hidden = true; veu.hidden = true; corpo.innerHTML = '';
+      document.documentElement.classList.remove('travado');
+      if (gatilho && document.contains(gatilho)) { try { gatilho.focus({ preventScroll: true }); } catch (x) {} }
+      gatilho = null;
+    } });
+  }
+  return { montar, abrir, fechar, get aberta() { return aberta; } };
+})();
+
+/* ───────── Vitrine: produtos compartilhados (db) com alternativa local ───────── */
+const CHAVE_PROD = 'clipse.produtos.v1';
+const Nuvem = { estado: 'aguardando', db: null, assets: null, produtos: null };
+let gerindo = false;
+let fotoPendente; // undefined = sem mudança, null = remover, objeto = nova foto
+
+function produtosLocais() {
+  try { const t = localStorage.getItem(CHAVE_PROD); if (t) { const l = JSON.parse(t); if (Array.isArray(l)) return l; } } catch (e) {}
+  return C.produtosExemplo.map((p) => Object.assign({}, p));
+}
+function gravarProdutosLocais(l) { try { localStorage.setItem(CHAVE_PROD, JSON.stringify(l)); return true; } catch (e) { return false; } }
+function produtosAtuais() {
+  const l = (Nuvem.produtos || []).slice();
+  l.sort((a, b) => (Number(a.ordem) || 0) - (Number(b.ordem) || 0) || String(a.nome).localeCompare(String(b.nome)));
+  return l;
+}
+function fotoSrc(p) {
+  if (p.fotoData && /^data:image\/(jpeg|png|webp);base64,/.test(p.fotoData)) return p.fotoData;
+  if (p.foto && /^[A-Za-z0-9_-]{8,64}$/.test(p.foto)) return '/_blob/' + p.foto;
+  return '';
+}
+function atualizarProdutos() { if (rota === 'produtos') pintar(); }
+function modoLocal(indisponivel) {
+  Nuvem.estado = indisponivel ? 'indisponivel' : 'local';
+  Nuvem.produtos = indisponivel ? C.produtosExemplo.map((p) => Object.assign({}, p)) : produtosLocais();
+  atualizarProdutos();
+}
+async function ligarNuvem() {
+  const tem = () => window.claude && typeof window.claude.use === 'function';
+  if (!tem()) {
+    await new Promise((ok) => { if (document.readyState === 'complete') setTimeout(ok, 300); else window.addEventListener('load', () => setTimeout(ok, 300), { once: true }); });
+    if (!tem()) { modoLocal(false); return; }
+  }
+  const limite = setTimeout(() => { if (Nuvem.estado === 'aguardando') modoLocal(true); }, 10000);
+  let db = null, user = null, assets = null;
+  try { const r = await Promise.all([window.claude.use('db'), window.claude.use('user'), window.claude.use('assets')]); db = r[0]; user = r[1]; assets = r[2]; } catch (e) {}
+  if (!db) { clearTimeout(limite); if (Nuvem.estado === 'aguardando') modoLocal(false); return; }
+  let pode = false;
+  try { pode = user ? !!(await user.canEdit()) : false; } catch (e) {}
+  Nuvem.db = db; Nuvem.assets = assets;
+  try {
+    db.collection('produtos').onSnapshot((snap) => {
+      clearTimeout(limite);
+      Nuvem.estado = pode ? 'compartilhado' : 'leitura';
+      Nuvem.produtos = snap.docs.map((d) => Object.assign({ id: d.id }, d.data() || {}));
+      atualizarProdutos();
+    }, () => { clearTimeout(limite); if (Nuvem.estado === 'aguardando') modoLocal(true); });
+  } catch (e) { clearTimeout(limite); modoLocal(true); }
+}
+function lerValor(t) {
+  const s = String(t || '').replace(/[^\d.,]/g, '').replace(/\.(?=\d{3}(\D|$))/g, '').replace(',', '.');
+  const n = parseFloat(s);
+  return isFinite(n) && n >= 0 && n < 1e6 ? Math.round(n * 100) / 100 : null;
+}
+function reduzirImagem(arq, max, q) {
+  return new Promise((ok, falha) => {
+    const url = URL.createObjectURL(arq); const img = new Image();
+    img.onload = () => {
+      const s = Math.min(1, max / Math.max(img.width, img.height));
+      const w = Math.max(1, Math.round(img.width * s)), hh = Math.max(1, Math.round(img.height * s));
+      const cv = document.createElement('canvas'); cv.width = w; cv.height = hh;
+      const g = cv.getContext('2d'); g.fillStyle = '#ffffff'; g.fillRect(0, 0, w, hh); g.drawImage(img, 0, 0, w, hh);
+      URL.revokeObjectURL(url);
+      const dataURL = cv.toDataURL('image/jpeg', q);
+      cv.toBlob((b) => { if (!b) falha(new Error('blob')); else ok({ blob: b, dataURL: dataURL, url: URL.createObjectURL(b) }); }, 'image/jpeg', q);
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); falha(new Error('imagem')); };
+    img.src = url;
+  });
+}
+async function salvarProduto(id, base) {
+  const atual = id ? produtosAtuais().find((p) => p.id === id) : null;
+  if (Nuvem.estado === 'compartilhado') {
+    const dados = Object.assign({}, base, { ordem: atual && atual.ordem != null ? atual.ordem : Date.now(), foto: (atual && atual.foto) || '' });
+    let antiga = '';
+    if (fotoPendente === null) { antiga = dados.foto; dados.foto = ''; }
+    else if (fotoPendente) {
+      if (!Nuvem.assets) throw { code: 'sem_assets' };
+      const r = await Nuvem.assets.upload(fotoPendente.blob, { type: 'image/jpeg' });
+      antiga = dados.foto; dados.foto = r.id;
+    }
+    const col = Nuvem.db.collection('produtos');
+    await (id ? col.doc(id) : col.doc()).set(dados);
+    if (antiga && Nuvem.assets) { try { await Nuvem.assets.delete(antiga); } catch (e) {} }
+    return;
+  }
+  if (Nuvem.estado !== 'local') throw { code: 'not_granted' };
+  const lista = produtosLocais();
+  const dados = Object.assign({}, base, { id: id || 'p' + novoId(), ordem: atual && atual.ordem != null ? atual.ordem : Date.now(), fotoData: (atual && atual.fotoData) || '' });
+  if (fotoPendente === null) dados.fotoData = '';
+  else if (fotoPendente) dados.fotoData = fotoPendente.dataURL;
+  const i = lista.findIndex((p) => p.id === dados.id);
+  if (i >= 0) lista[i] = dados; else lista.push(dados);
+  if (!gravarProdutosLocais(lista)) throw { code: 'sem_espaco' };
+  Nuvem.produtos = lista; atualizarProdutos();
+}
+async function excluirProduto(id) {
+  const atual = produtosAtuais().find((p) => p.id === id);
+  if (Nuvem.estado === 'compartilhado') {
+    await Nuvem.db.collection('produtos').doc(id).delete();
+    if (atual && atual.foto && Nuvem.assets) { try { await Nuvem.assets.delete(atual.foto); } catch (e) {} }
+    return;
+  }
+  if (Nuvem.estado !== 'local') throw { code: 'not_granted' };
+  const lista = produtosLocais().filter((p) => p.id !== id);
+  gravarProdutosLocais(lista); Nuvem.produtos = lista; atualizarProdutos();
+}
+function mensagemErro(e) {
+  const c = e && e.code;
+  if (c === 'quota_exceeded' || c === 'quota_or_state') return 'O espaço da vitrine está cheio. Remova um produto ou uma foto e tente de novo.';
+  if (c === 'too_large') return 'A foto ficou grande demais. Escolha uma imagem menor.';
+  if (c === 'unsupported_type') return 'Esse tipo de arquivo não é aceito. Use JPG, PNG ou WebP.';
+  if (c === 'invalid_argument' || c === 'not_granted' || c === 'revoked') return 'Você não tem permissão para editar a vitrine nesta visita.';
+  if (c === 'sem_espaco') return 'Este navegador ficou sem espaço para guardar a foto. Salve sem foto ou use uma imagem menor.';
+  if (c === 'sem_assets') return 'O envio de fotos não está disponível nesta visita. Salve sem foto.';
+  return 'Não consegui salvar agora. Tente de novo em instantes.';
+}
+
+/* ───────── Peças de página ───────── */
+const topo = (titulo, lide) => '<header class="pg-topo"><h1>' + titulo + '</h1>' + (lide ? '<p class="lide">' + lide + '</p>' : '') + '</header>';
+const selo = (plano) => '<span class="selo selo-' + plano + '">' + nomePlano(plano) + '</span>';
+const notaIlustrativa = (txt) => '<p class="nota-prot">' + txt + '</p>';
+function botaoSalvar(tipo, id, rotulos) {
+  const on = estado.logado && estado.salvos[tipo].indexOf(id) >= 0;
+  rotulos = rotulos || ['Salvar na minha rede', 'Salvo na minha rede'];
+  return '<button type="button" class="btn btn-sec btn-p' + (on ? ' on' : '') + '" data-acao="salvar" data-tipo="' + tipo + '" data-id="' + id + '" aria-pressed="' + on + '">' + (on ? ic('check', 16) : '') + '<span>' + (on ? rotulos[1] : rotulos[0]) + '</span></button>';
+}
+
+/* ───────── Páginas ───────── */
+let rota = 'inicio';
+let heroi = null;
+let filtroProf = 'Todos';
+let filtroLocal = 'todos';
+let selLocal = null;
+let abaJornada = 'hoje';
+let animarLuaDe = null;
+
+function pgInicio() {
+  const destinos = ['por-que-natural', 'programacao', 'profissionais', 'curitiba', 'comunidade', 'minha-jornada'].map((id) => C.paginas.find((p) => p.id === id));
+  return '' +
+  '<section class="heroi">' +
+    '<div class="heroi-lua">' +
+      '<div class="palco" id="palco" role="slider" tabindex="0" aria-label="Fase da lua. Arraste para os lados ou use as setas." aria-valuemin="1" aria-valuemax="4" aria-valuenow="3" aria-valuetext="Lua cheia">' +
+        '<canvas class="ceu" id="ceu" aria-hidden="true"></canvas><div class="halo" aria-hidden="true"></div>' + luaGrande('lua-heroi') +
+      '</div>' +
+      '<div class="trilho" role="group" aria-label="As quatro fases">' +
+        C.ordemFases.map((id) => '<button type="button" class="trilho-item" data-acao="heroi-fase" data-fase="' + id + '" aria-pressed="false">' + luaMini(C.fases[id].p, 22) + '<span>' + { nova: 'Nova', crescente: 'Crescente', cheia: 'Cheia', minguante: 'Minguante' }[id] + '</span></button>').join('') +
+      '</div>' +
+      '<p class="legenda-fase" id="legenda-fase" aria-live="polite"></p>' +
+    '</div>' +
+    '<div class="heroi-texto">' +
+      '<h1 class="display">Como a lua, todo mundo tem fases.</h1>' +
+      '<p class="lide">A Clipse acompanha a sua jornada fitness natural com conteúdo, profissionais e pessoas por perto, sem pressa, sem comparação e sem promessa de resultado rápido.</p>' +
+      '<div class="acoes">' +
+        '<a class="btn btn-pri" href="#' + (estado.logado ? 'minha-jornada' : 'entrar') + '">' + (estado.logado ? 'Abrir minha jornada' : 'Começar minha jornada') + '</a>' +
+        '<a class="btn btn-sec" href="#por-que-natural">Por que natural</a>' +
+      '</div>' +
+    '</div>' +
+  '</section>' +
+  '<section class="bloco"><h2>O que tem aqui</h2>' +
+    '<ul class="destinos">' + destinos.map((p) => '<li><a href="#' + p.id + '"><span class="dest-nome">' + p.nome + '</span><span class="dest-linha">' + p.linha + '</span>' + ic('seta', 18) + '</a></li>').join('') + '</ul>' +
+  '</section>' +
+  '<section class="bloco"><h2>O jeito da Clipse</h2>' +
+    '<ul class="principios">' +
+      '<li><h3>Cada pessoa tem a própria jornada</h3><p>Sem promessa, sem atalho e sem ranking.</p></li>' +
+      '<li><h3>Ninguém precisa ser perfeito</h3><p>Pausar faz parte do ciclo. Voltar também.</p></li>' +
+      '<li><h3>O tempo faz parte do resultado</h3><p>Meses e anos contam a favor de quem segue.</p></li>' +
+      '<li><h3>A porta é aberta</h3><p>Academia, corrida, yoga, caminhada. Toda atividade cabe.</p></li>' +
+    '</ul>' +
+  '</section>' +
+  '<section class="bloco faixa">' +
+    '<div><h2>O piloto é em Curitiba</h2><p>Encontros gratuitos em parques, academias e clínicas alinhadas ao natural, e grupos para treinar perto de casa.</p><a class="btn btn-sec" href="#curitiba">Ver o mapa</a></div>' +
+    '<figure class="citacao"><blockquote>Registrar as minhas voltas me mostrou que eu nunca parei de verdade.</blockquote><figcaption>Aline, personagem ilustrativa. <a href="#historias">Ler as histórias de retorno</a></figcaption></figure>' +
+  '</section>' +
+  '<section class="bloco"><h2>Três planos</h2>' +
+    '<ul class="planos-resumo">' + C.planos.map((p) => '<li><strong>' + p.nome + '</strong><span>' + p.linha + '</span></li>').join('') + '</ul>' +
+    '<a class="btn btn-sec" href="#planos">Comparar os planos</a>' +
+  '</section>';
+}
+
+function linhaAula(a) {
+  const livre = temAcesso(a.plano);
+  const vista = estado.logado && estado.aulas.indexOf(a.id) >= 0;
+  return '<li><button type="button" class="aula" data-acao="aula" data-id="' + a.id + '">' +
+    '<span class="aula-ic' + (livre ? '' : ' travada') + '">' + ic(livre ? 'play' : 'cadeado', 18) + '</span>' +
+    '<span class="aula-txt"><span class="aula-t">' + a.t + '</span><span class="aula-meta">' + a.min + ' min, com ' + esc(a.por) + ', ' + esc(a.papel) + '</span></span>' +
+    (vista ? '<span class="selo selo-vista">' + ic('check', 14) + 'Assistida</span>' : selo(a.plano)) +
+  '</button></li>';
+}
+function pgNatural() {
+  return topo('Por que natural', 'Na Clipse, natural é cuidar do corpo sem hormônios, anabolizantes ou canetas emagrecedoras usados só por estética ou desempenho.') +
+  '<section class="bloco prosa">' +
+    '<p>Vale para quem compete no fisiculturismo natural e para quem só quer treinar, correr ou fazer yoga e se sentir bem.</p>' +
+    '<p>Tratamento médico é outra conversa. Quem usa hormônio ou medicamento com indicação e acompanhamento segue o que o médico orientou.</p>' +
+  '</section>' +
+  '<section class="bloco"><h2>Motivos para ficar no natural</h2>' +
+    '<ul class="lista-ideias">' + C.motivos.map((m) => '<li><h3>' + m.t + '</h3><p>' + m.d + '</p></li>').join('') + '</ul>' +
+  '</section>' +
+  '<section class="bloco painel-risco"><h2>O que o antes e depois não mostra</h2>' +
+    '<p class="sub">Efeitos associados ao uso de esteroides anabolizantes por estética ou desempenho, sem indicação médica.</p>' +
+    '<dl class="riscos">' + C.riscos.map((r) => '<div><dt>' + r.t + '</dt><dd>' + r.d + '</dd></div>').join('') + '</dl>' +
+    '<p class="destaque">Para estética ou desempenho, não existe dose considerada segura. Desde 2023, o Conselho Federal de Medicina proíbe médicos de prescreverem esteroides anabolizantes com essa finalidade.</p>' +
+    '<p>Se você usa ou já usou e quer parar, procure um endocrinologista. Parar com acompanhamento é mais seguro.</p>' +
+    '<p class="fontes">Fontes: Conselho Federal de Medicina, Resolução nº 2.333/2023. Sociedade Brasileira de Endocrinologia e Metabologia, alertas sobre o uso de anabolizantes para fins estéticos.</p>' +
+  '</section>' +
+  '<section class="bloco"><h2>Aulas</h2><p class="sub">Vídeos curtos, gravados por profissionais. Cabem no intervalo do almoço.</p>' +
+    '<ul class="aulas">' + C.aulas.map(linhaAula).join('') + '</ul>' +
+  '</section>' +
+  '<section class="bloco"><h2>Guia digital</h2><p class="sub">Cinco capítulos para ler no seu tempo. A versão completa em PDF entra na próxima etapa do projeto.</p>' +
+    '<div class="acordeao">' + C.guia.map((g, i) => '<details><summary><span class="num">' + (i + 1) + '</span><span class="sum-t">' + g.t + '</span><span class="sum-m">' + g.min + ' min</span>' + ic('baixo', 18) + '</summary><p>' + g.d + '</p></details>').join('') + '</div>' +
+  '</section>';
+}
+
+function linhaEvento(e, quando) {
+  const on = estado.logado && estado.salvos.eventos.indexOf(e.id) >= 0;
+  return '<li class="evento">' +
+    '<div class="ev-quando">' + quando + '</div>' +
+    '<div class="ev-txt"><h3>' + e.t + '</h3><p>' + e.d + '</p><p class="meta">' + (e.tipo ? e.tipo + ', ' : '') + esc(e.onde) + '</p></div>' +
+    '<div class="ev-lado">' + selo(e.plano) +
+      '<button type="button" class="btn btn-sec btn-p' + (on ? ' on' : '') + '" data-acao="salvar" data-tipo="eventos" data-id="' + e.id + '" aria-pressed="' + on + '">' + (on ? ic('check', 16) : '') + '<span>' + (on ? 'Na minha rede' : 'Tenho interesse') + '</span></button>' +
+    '</div></li>';
+}
+function pgProgramacao() {
+  return topo('Programação', 'A semana da Clipse tem um ritmo fixo. Você participa do que couber na sua.') +
+  '<section class="bloco"><h2>Toda semana</h2>' +
+    '<ul class="eventos">' + C.semana.map((e) => linhaEvento(e, '<strong>' + e.dia + '</strong><span>' + e.hora + '</span>')).join('') + '</ul>' +
+  '</section>' +
+  '<section class="bloco"><h2>O tema de cada semana</h2><p class="sub">O conteúdo gira em um ciclo de quatro semanas. Aula, leitura e encontros seguem o tema.</p>' +
+    '<ol class="temas">' + C.temas.map((t, i) => '<li><span class="tema-n">Semana ' + (i + 1) + '</span><h3>' + t.t + '</h3><p>' + t.d + '</p></li>').join('') + '</ol>' +
+  '</section>' +
+  '<section class="bloco"><h2>Uma vez por mês</h2>' +
+    '<ul class="eventos">' + C.mensais.map((e) => linhaEvento(e, '<span>' + e.quando + '</span>')).join('') + '</ul>' +
+  '</section>' +
+  notaIlustrativa('Programação ilustrativa. Horários e locais serão definidos com os parceiros.');
+}
+
+function iniciais(nome) { return nome.split(' ').map((p) => p[0]).slice(0, 2).join(''); }
+function pgProfissionais() {
+  const areas = ['Todos', 'Nutrição', 'Treino', 'Psicologia'];
+  const lista = C.profissionais.filter((p) => filtroProf === 'Todos' || p.area === filtroProf);
+  return topo('Profissionais', 'Nutricionistas, personal trainers e psicólogos que trabalham sem atalho e respeitam a sua fase.') +
+  '<div class="filtros" role="group" aria-label="Filtrar por área">' + areas.map((a) => '<button type="button" class="filtro" data-acao="filtro-prof" data-id="' + a + '" aria-pressed="' + (filtroProf === a) + '">' + a + '</button>').join('') + '</div>' +
+  '<ul class="gente">' + lista.map((p) =>
+    '<li class="pessoa"><div class="avatar av-' + p.area.toLowerCase().normalize('NFD').replace(/[^a-z]/g, '') + '" aria-hidden="true">' + iniciais(p.nome) + '</div>' +
+    '<div class="pessoa-txt"><h3>' + p.nome + '</h3><p class="papel">' + p.papel + '</p><p>' + p.foco + '</p><p class="meta">' + p.onde + '</p>' +
+    '<div class="acoes"><button type="button" class="btn btn-sec btn-p" data-acao="prof" data-id="' + p.id + '">Ver perfil</button>' + botaoSalvar('profissionais', p.id) + '</div></div></li>').join('') + '</ul>' +
+  '<section class="bloco prosa"><h2>Como funciona o acompanhamento</h2>' +
+    '<p>No Premium, os profissionais aparecem nas aulas, nos encontros ao vivo e na aula geral mensal de psicologia.</p>' +
+    '<p>No Diamond, nutricionista e personal acompanham você de perto, com plano e treino ajustados à fase da sua lua. As aulas de psicologia são coletivas e não substituem terapia.</p>' +
+    '<a class="btn btn-sec" href="#planos">Ver os planos</a>' +
+  '</section>' +
+  notaIlustrativa('Perfis ilustrativos. Os nomes são fictícios.');
+}
+
+function pgPlanos() {
+  const atual = planoAtual();
+  const marca = (v) => (v === true ? '<span class="sim">' + ic('check', 16) + '<span class="oculto">Incluído</span></span>' : v === false ? '<span class="nao"><span aria-hidden="true">–</span><span class="oculto">Não incluído</span></span>' : esc(v));
+  return topo('Planos', 'Dá para começar de graça e mudar quando fizer sentido. Sem fidelidade.') +
+  '<ul class="planos">' + C.planos.map((p) => {
+    const seu = estado.logado && atual === p.id;
+    return '<li class="plano plano-' + p.id + (seu ? ' seu' : '') + '">' +
+      '<div class="plano-topo"><h2>' + p.nome + '</h2>' + (seu ? '<span class="selo selo-seu">Seu plano</span>' : '') + '</div>' +
+      '<p class="plano-linha">' + p.linha + '</p>' +
+      '<p class="plano-valor"><strong>' + p.valor + '</strong>' + (p.periodo ? '<span>' + p.periodo + '</span>' : '') + '</p>' +
+      '<ul class="plano-itens">' + p.itens.map((i) => '<li>' + ic('check', 16) + '<span>' + i + '</span></li>').join('') + '</ul>' +
+      (seu ? '' : '<button type="button" class="btn ' + (p.id === 'premium' ? 'btn-pri' : 'btn-sec') + '" data-acao="plano" data-id="' + p.id + '">Escolher ' + p.nome + '</button>') +
+    '</li>';
+  }).join('') + '</ul>' +
+  '<section class="bloco"><h2>O que entra em cada plano</h2>' +
+    '<div class="rolagem"><table class="comparativo"><thead><tr><th scope="col">Recurso</th>' + C.planos.map((p) => '<th scope="col">' + p.nome + '</th>').join('') + '</tr></thead>' +
+    '<tbody>' + C.comparativo.map((l) => '<tr><th scope="row">' + l[0] + '</th><td>' + marca(l[1]) + '</td><td>' + marca(l[2]) + '</td><td>' + marca(l[3]) + '</td></tr>').join('') + '</tbody></table></div>' +
+  '</section>' +
+  notaIlustrativa('Valores ilustrativos. Neste protótipo a troca de plano é simulada e nada é cobrado.');
+}
+
+const FORMA_PINO = {
+  parque: (x, y) => '<circle class="pino-forma" cx="' + x + '" cy="' + y + '" r="6.5"/>',
+  corrida: (x, y) => '<path class="pino-forma" d="M' + x + ' ' + (y - 8) + 'l7.5 13h-15z"/>',
+  academia: (x, y) => '<rect class="pino-forma" x="' + (x - 6) + '" y="' + (y - 6) + '" width="12" height="12" rx="2.5"/>',
+  saude: (x, y) => '<path class="pino-forma" d="M' + (x - 2.6) + ' ' + (y - 7.5) + 'h5.2v4.9h4.9v5.2h-4.9v4.9h-5.2v-4.9h-4.9v-5.2h4.9z"/>'
+};
+function locaisVisiveis() { return C.locais.filter((l) => filtroLocal === 'todos' || l.cat === filtroLocal); }
+function mapaSVG() {
+  return '<svg class="mapa" viewBox="0 0 320 300" role="group" aria-label="Mapa esquemático de Curitiba com os locais parceiros">' +
+    '<g class="mapa-aneis" aria-hidden="true"><circle cx="160" cy="160" r="46"/><circle cx="160" cy="160" r="92"/><circle cx="160" cy="160" r="138"/></g>' +
+    '<g class="mapa-bairros" aria-hidden="true">' + C.bairrosMapa.map((b) => '<text x="' + b.x + '" y="' + b.y + '">' + b.t + '</text>').join('') + '</g>' +
+    '<g class="mapa-norte" aria-hidden="true"><path d="M296 34V16m0 0-5 7m5-7 5 7"/><text x="296" y="48">N</text></g>' +
+    locaisVisiveis().map((l) => '<g class="pino' + (l.id === selLocal ? ' on' : '') + '" data-acao="local" data-id="' + l.id + '" role="button" tabindex="0" aria-label="' + esc(l.nome) + ', ' + esc(l.bairro) + '" aria-pressed="' + (l.id === selLocal) + '">' +
+      '<circle class="pino-toque" cx="' + l.x + '" cy="' + l.y + '" r="15"/>' + (l.id === selLocal ? '<circle class="pino-anel" cx="' + l.x + '" cy="' + l.y + '" r="13"/>' : '') + FORMA_PINO[l.cat](l.x, l.y) + '</g>').join('') +
+  '</svg>';
+}
+function detalheLocal() {
+  const l = C.locais.find((x) => x.id === selLocal);
+  if (!l || (filtroLocal !== 'todos' && l.cat !== filtroLocal)) return '<p class="local-dica">Toque em um ponto do mapa ou em um item da lista para ver os detalhes.</p>';
+  return '<div class="local-det"><p class="papel">' + C.categoriasLocal[l.cat] + ', ' + esc(l.bairro) + '</p><h3>' + l.nome + '</h3><p>' + l.d + '</p><p class="beneficio">' + l.beneficio + '</p>' + botaoSalvar('locais', l.id) + '</div>';
+}
+function pgCuritiba() {
+  const cats = [['todos', 'Todos']].concat(Object.keys(C.categoriasLocal).map((k) => [k, C.categoriasLocal[k]]));
+  return topo('Curitiba', 'O piloto da Clipse acontece aqui. Parques com encontros gratuitos e espaços parceiros alinhados ao natural.') +
+  '<div class="filtros" role="group" aria-label="Filtrar por tipo de local">' + cats.map((c) => '<button type="button" class="filtro" data-acao="filtro-local" data-id="' + c[0] + '" aria-pressed="' + (filtroLocal === c[0]) + '">' + (c[0] !== 'todos' ? '<svg class="leg" width="14" height="14" viewBox="-9 -9 18 18" aria-hidden="true">' + FORMA_PINO[c[0]](0, 0) + '</svg>' : '') + c[1] + '</button>').join('') + '</div>' +
+  '<div class="cidade">' +
+    '<div class="cidade-mapa" id="cidade-mapa">' + mapaSVG() + '<p class="meta">Mapa esquemático, fora de escala.</p><div id="local-detalhe" aria-live="polite">' + detalheLocal() + '</div></div>' +
+    '<ul class="locais">' + locaisVisiveis().map((l) => '<li><button type="button" class="local' + (l.id === selLocal ? ' on' : '') + '" data-acao="local" data-id="' + l.id + '" data-rolar="1" aria-pressed="' + (l.id === selLocal) + '">' +
+      '<svg class="leg" width="16" height="16" viewBox="-9 -9 18 18" aria-hidden="true">' + FORMA_PINO[l.cat](0, 0) + '</svg>' +
+      '<span class="local-txt"><span class="local-nome">' + l.nome + '</span><span class="meta">' + esc(l.bairro) + '</span></span><span class="local-ben">' + l.beneficio + '</span></button></li>').join('') + '</ul>' +
+  '</div>' +
+  '<section class="bloco faixa"><div><h2>Tem um espaço em Curitiba?</h2><p>Academias, estúdios, clínicas e grupos gratuitos podem entrar no mapa.</p><a class="btn btn-sec" href="#seja-parceiro">Seja parceiro</a></div></section>' +
+  notaIlustrativa('Parceiros ilustrativos. Os parques são reais, e os encontros neles são propostas do projeto.');
+}
+
+function pgComunidade() {
+  return topo('Comunidade', 'Grupos para praticar junto, por afinidade e por região. Entrar é uma escolha sua: dá para viver a Clipse só com a sua rotina.') +
+  '<section class="bloco"><h2>Como os grupos funcionam</h2>' +
+    '<ul class="lista-ideias tres">' +
+      '<li><h3>Sem ranking</h3><p>Ninguém posta número, tempo ou carga para comparar.</p></li>' +
+      '<li><h3>Sem cobrança por presença</h3><p>Quem some por um tempo é recebido de volta do mesmo jeito.</p></li>' +
+      '<li><h3>Quem tem constância acompanha</h3><p>Em cada grupo, algumas pessoas se oferecem para treinar com quem está voltando.</p></li>' +
+    '</ul>' +
+  '</section>' +
+  '<section class="bloco"><h2>Grupos em Curitiba e online</h2>' +
+    '<ul class="grupos">' + C.grupos.map((g) => {
+      const on = estado.logado && estado.salvos.grupos.indexOf(g.id) >= 0;
+      return '<li class="grupo' + (on ? ' on' : '') + '"><div class="grupo-txt"><p class="papel">' + g.ativ + ', ritmo ' + g.ritmo.toLowerCase() + '</p><h3>' + g.nome + '</h3><p>' + g.d + '</p>' +
+        '<p class="meta">' + esc(g.regiao) + '. ' + g.quando + '.</p><p class="grupo-gente">' + luaMini(0.25, 16) + '<span>' + g.gente + ' pessoas, ' + g.voltando + ' voltando agora</span></p></div>' +
+        '<button type="button" class="btn ' + (on ? 'btn-sec on' : 'btn-pri') + ' btn-p" data-acao="grupo" data-id="' + g.id + '" aria-pressed="' + on + '">' + (on ? 'Sair do grupo' : 'Entrar no grupo') + '</button></li>';
+    }).join('') + '</ul>' +
+  '</section>' +
+  notaIlustrativa('Grupos e números ilustrativos. A participação em grupos faz parte do Premium.');
+}
+
+/* ── Minha jornada ── */
+function faseNoDia(dia) { let f = null; for (const h of estado.historico) { if (h.data <= dia) f = h.fase; else break; } return f; }
+function desdeQuando() { const h = estado.historico; for (let i = h.length - 1; i >= 0; i--) { if (h[i].fase === estado.fase) { let j = i; while (j > 0 && h[j - 1].fase === estado.fase) j--; return h[j].data; } } return hojeISO(); }
+const SUGESTOES = {
+  cheia: [['aula', 'a8', 'Aula: Treinar para os próximos 30 anos'], ['pg', 'comunidade', 'Grupos para treinar junto'], ['pg', 'programacao', 'A programação desta semana']],
+  minguante: [['aula', 'a5', 'Aula: Rotina puxada, o mínimo que mantém você por perto'], ['pg', 'curitiba', 'Encontros abertos perto de você'], ['aula', 'a2', 'Aula: Tempo também é resultado']],
+  nova: [['aula', 'a2', 'Aula: Tempo também é resultado'], ['pg', 'historias', 'Histórias de quem parou e voltou'], ['aula', 'a7', 'Aula: Com quem você está se comparando?']],
+  crescente: [['aula', 'a4', 'Aula: Voltando depois de uma pausa'], ['pg', 'programacao', 'Encontro de volta, no último sábado do mês'], ['pg', 'profissionais', 'Profissionais que acompanham retomadas']]
+};
+function bloqueioInline(msg) {
+  return '<div class="bloqueio">' + ic('cadeado', 22) + '<div><p><strong>' + msg + '</strong></p><p class="meta">Neste protótipo a troca de plano é simulada. Nada é cobrado.</p>' +
+    '<div class="acoes"><button type="button" class="btn btn-pri btn-p" data-acao="plano" data-id="premium">Simular Premium</button><a class="btn btn-sec btn-p" href="#planos">Ver planos</a></div></div></div>';
+}
+function jHoje() {
+  const hoje = hojeISO(), ck = estado.checkins[hoje] || {}, fez = ck.fez || [];
+  const energias = [['baixa', 'Baixa'], ['ok', 'Ok'], ['alta', 'Alta']];
+  const feitos = ['Treinei', 'Caminhei', 'Alonguei', 'Descansei'];
+  return '' +
+  '<section class="bloco-j"><h2>Para a sua fase</h2><ul class="sugestoes">' + (SUGESTOES[estado.fase] || []).map((s) =>
+    s[0] === 'aula' ? '<li><button type="button" class="sugestao" data-acao="aula" data-id="' + s[1] + '"><span>' + s[2] + '</span>' + ic('seta', 16) + '</button></li>'
+                    : '<li><a class="sugestao" href="#' + s[1] + '"><span>' + s[2] + '</span>' + ic('seta', 16) + '</a></li>').join('') + '</ul></section>' +
+  '<section class="bloco-j"><h2>Check-in de hoje</h2>' +
+    '<form class="checkin" data-form="checkin">' +
+      '<fieldset><legend>Como está a energia?</legend><div class="segmento">' + energias.map((e) => '<input type="radio" name="energia" id="en-' + e[0] + '" value="' + e[0] + '"' + (ck.energia === e[0] ? ' checked' : '') + '><label for="en-' + e[0] + '">' + e[1] + '</label>').join('') + '</div></fieldset>' +
+      '<fieldset><legend>O que rolou hoje?</legend><div class="chips">' + feitos.map((f, i) => '<input type="checkbox" name="fez" id="fz-' + i + '" value="' + f + '"' + (fez.indexOf(f) >= 0 ? ' checked' : '') + '><label for="fz-' + i + '">' + f + '</label>').join('') + '</div></fieldset>' +
+      '<label for="ck-nota">Uma linha sobre o dia (opcional)</label><input type="text" id="ck-nota" name="nota" maxlength="140" value="' + esc(ck.nota || '') + '">' +
+      '<div class="acoes"><button class="btn btn-pri">' + (estado.checkins[hoje] ? 'Atualizar check-in' : 'Salvar check-in') + '</button></div>' +
+      '<p class="meta">Tudo aqui é opcional. Dia sem registro fica em branco, sem cobrança.</p>' +
+    '</form></section>' +
+  '<section class="bloco-j"><h2>Objetivos</h2><p class="sub">Em texto livre, do seu jeito. Nenhum número é obrigatório.</p>' +
+    (estado.objetivos.length ? '<ul class="objetivos">' + estado.objetivos.map((o) =>
+      '<li class="' + (o.rotina ? 'feito' : '') + '"><button type="button" class="obj-marca" data-acao="toggle-objetivo" data-id="' + esc(o.id) + '" aria-pressed="' + !!o.rotina + '" aria-label="Já faz parte da rotina">' + ic('check', 16) + '</button>' +
+      '<span class="obj-t">' + esc(o.texto) + (o.rotina ? '<span class="meta">Já faz parte da rotina</span>' : '') + '</span>' +
+      '<button type="button" class="btn-x" data-acao="del-objetivo" data-id="' + esc(o.id) + '" aria-label="Remover objetivo">' + ic('fechar', 16) + '</button></li>').join('') + '</ul>' : '') +
+    '<form class="linha-form" data-form="objetivo"><label class="oculto" for="obj-novo">Novo objetivo</label><input type="text" id="obj-novo" name="texto" maxlength="120" placeholder="Ex.: subir a escada do prédio sem cansar" required><button class="btn btn-sec">Adicionar</button></form>' +
+  '</section>';
+}
+function jCiclo() {
+  if (!temAcesso('premium')) return bloqueioInline('O ciclo de 28 dias e as voltas fazem parte do Premium.');
+  const hoje = hojeISO(); let cel = '';
+  for (let i = 27; i >= 0; i--) {
+    const dia = diasAtras(i), f = faseNoDia(dia), ck = estado.checkins[dia];
+    cel += '<li class="' + (dia === hoje ? 'hoje' : '') + '"><span class="ciclo-lua">' + (f ? luaMini(C.fases[f].p, 26) : '<span class="lua-vazia"></span>') + '</span>' +
+      '<span class="ciclo-dia" aria-hidden="true">' + deISO(dia).getDate() + '</span>' + (ck ? '<span class="ciclo-ponto" aria-hidden="true"></span>' : '') +
+      '<span class="oculto">' + dataLonga(dia) + ': ' + (f ? C.fases[f].nome : 'sem fase registrada') + (ck ? ', com check-in' : '') + '</span></li>';
+  }
+  const voltas = estado.voltas.slice().reverse();
+  const hist = estado.historico.slice().reverse();
+  return '' +
+  '<section class="bloco-j"><h2>Últimos 28 dias</h2><ol class="ciclo">' + cel + '</ol>' +
+    '<p class="meta">O ponto marca os dias com check-in. Dias sem registro ficam em branco. Aqui não tem sequência para manter.</p></section>' +
+  '<section class="bloco-j"><h2>Voltas</h2>' +
+    (voltas.length ? '<ul class="voltas">' + voltas.map((v) => '<li>' + luaMini(0, 20) + ic('seta', 14) + luaMini(0.25, 20) + '<span><strong>' + dataLonga(v.data) + '</strong>' + (v.dias ? ' depois de ' + v.dias + (v.dias === 1 ? ' dia' : ' dias') + ' de pausa' : '') + '</span></li>').join('') + '</ul>'
+                   : '<p class="vazio">Nenhuma volta registrada ainda. Ela aparece aqui quando você sair da Lua nova.</p>') +
+  '</section>' +
+  '<section class="bloco-j"><h2>Suas fases</h2><ul class="historico">' + hist.map((h) => '<li>' + luaMini(C.fases[h.fase].p, 20) + '<span><strong>' + C.fases[h.fase].nome + '</strong> desde ' + dataLonga(h.data) + (h.motivo ? '<span class="meta">Motivo: ' + esc(h.motivo) + (h.nota ? '. ' + esc(h.nota) : '') + '</span>' : (h.nota ? '<span class="meta">' + esc(h.nota) + '</span>' : '')) + '</span></li>').join('') + '</ul></section>';
+}
+function jDiario() {
+  if (!temAcesso('premium')) return bloqueioInline('O diário faz parte do Premium.');
+  return '' +
+  '<section class="bloco-j"><h2>Diário</h2><p class="sub">Anotações livres. Só você vê.</p>' +
+    '<form class="form" data-form="diario"><label for="di-texto">O que você quer guardar de hoje?</label><textarea id="di-texto" name="texto" rows="3" maxlength="600" required></textarea>' +
+      '<label for="di-foto">Foto (opcional)</label><input type="file" id="di-foto" name="foto" accept="image/png,image/jpeg,image/webp">' +
+      '<div class="acoes"><button class="btn btn-pri">Guardar no diário</button></div></form>' +
+    (estado.diario.length ? '<ul class="diario">' + estado.diario.map((d) =>
+      '<li><div class="di-topo"><time datetime="' + esc(d.data) + '">' + dataLonga(d.data) + '</time><button type="button" class="btn-x" data-acao="del-diario" data-id="' + esc(d.id) + '" aria-label="Apagar anotação">' + ic('fechar', 16) + '</button></div>' +
+      '<p>' + esc(d.texto) + '</p>' + (d.foto && /^data:image\//.test(d.foto) ? '<img class="di-foto" src="' + esc(d.foto) + '" alt="Foto da anotação">' : '') + '</li>').join('') + '</ul>'
+      : '<p class="vazio">Seu diário está vazio. A primeira anotação pode ser uma frase.</p>') +
+  '</section>';
+}
+function jRede() {
+  const s = estado.salvos;
+  const grupo = (titulo, itens, vazio, link) => '<section class="bloco-j"><h2>' + titulo + '</h2>' + (itens.length ? '<ul class="rede">' + itens.join('') + '</ul>' : '<p class="vazio">' + vazio + ' <a href="#' + link[0] + '">' + link[1] + '</a></p>') + '</section>';
+  const item = (tipo, id, nome, meta) => '<li><span class="rede-t"><strong>' + nome + '</strong><span class="meta">' + meta + '</span></span><button type="button" class="btn-x" data-acao="tirar-salvo" data-tipo="' + tipo + '" data-id="' + id + '" aria-label="Tirar da minha rede">' + ic('fechar', 16) + '</button></li>';
+  const profs = s.profissionais.map((id) => C.profissionais.find((p) => p.id === id)).filter(Boolean).map((p) => item('profissionais', p.id, p.nome, p.papel));
+  const locais = s.locais.map((id) => C.locais.find((p) => p.id === id)).filter(Boolean).map((l) => item('locais', l.id, l.nome, esc(l.bairro)));
+  const grupos = s.grupos.map((id) => C.grupos.find((p) => p.id === id)).filter(Boolean).map((g) => item('grupos', g.id, g.nome, g.quando));
+  const todosEv = C.semana.concat(C.mensais);
+  const eventos = s.eventos.map((id) => todosEv.find((p) => p.id === id)).filter(Boolean).map((e) => item('eventos', e.id, e.t, e.dia ? e.dia + ', ' + e.hora : e.quando));
+  return grupo('Profissionais', profs, 'Nenhum profissional salvo.', ['profissionais', 'Conhecer os profissionais']) +
+    grupo('Lugares', locais, 'Nenhum lugar salvo.', ['curitiba', 'Abrir o mapa de Curitiba']) +
+    grupo('Grupos', grupos, 'Você não está em nenhum grupo, e tudo bem.', ['comunidade', 'Ver os grupos']) +
+    grupo('Programação', eventos, 'Nenhum evento marcado.', ['programacao', 'Ver a programação']) +
+    '<section class="bloco-j conta"><h2>Conta</h2>' +
+      '<p>Plano ' + nomePlano(estado.plano) + '. <a href="#planos">Mudar de plano</a></p>' +
+      '<p class="meta">Login simulado. Sua jornada fica salva só neste navegador.</p>' +
+      '<div class="acoes"><button type="button" class="btn btn-sec btn-p" data-acao="sair">Sair</button><button type="button" class="btn btn-perigo btn-p" data-acao="apagar">Apagar minha jornada</button></div>' +
+    '</section>';
+}
+function pgJornada() {
+  if (!estado.logado) {
+    return topo('Minha jornada', 'Um registro do seu caminho em fases. Sem sequência obrigatória, sem ranking e sem meta imposta.') +
+    '<section class="bloco"><ul class="lista-ideias">' +
+      '<li><h3>Sua fase</h3><p>Lua cheia, minguante, nova ou crescente. Você escolhe e troca quando quiser.</p></li>' +
+      '<li><h3>Check-in leve</h3><p>Como está a energia e o que rolou no dia. Tudo opcional.</p></li>' +
+      '<li><h3>Pausas e voltas</h3><p>A pausa entra no ciclo. Cada volta vira um marco.</p></li>' +
+      '<li><h3>Diário e objetivos</h3><p>Em texto livre, só para você.</p></li>' +
+    '</ul><div class="acoes"><a class="btn btn-pri" href="#entrar">Entrar</a><button type="button" class="btn btn-sec" data-acao="exemplo">Ver com perfil de exemplo</button></div></section>';
+  }
+  const f = C.fases[estado.fase];
+  const abas = [['hoje', 'Hoje'], ['ciclo', 'Ciclo'], ['diario', 'Diário'], ['rede', 'Rede']];
+  const painel = { hoje: jHoje, ciclo: jCiclo, diario: jDiario, rede: jRede }[abaJornada]();
+  return '' +
+  '<section class="jornada-topo">' +
+    '<div class="jt-lua"><div class="halo" aria-hidden="true"></div>' + luaGrande('lua-jornada') + '</div>' +
+    '<div class="jt-txt"><p class="ola">Oi, ' + esc(primeiroNome()) + (estado.exemplo ? ' <span class="selo">Perfil de exemplo</span>' : '') + '</p>' +
+      '<h1>' + f.nome + '</h1><p class="lide">' + f.curta + '. ' + f.texto + '</p>' +
+      '<p class="meta">Nesta fase desde ' + dataLonga(desdeQuando()) + '.</p>' +
+      '<button type="button" class="btn btn-sec" data-acao="mudar-fase">Mudar fase</button></div>' +
+  '</section>' +
+  '<div class="abas" role="tablist" aria-label="Seções da jornada">' + abas.map((a) => '<button type="button" role="tab" id="aba-' + a[0] + '" aria-selected="' + (abaJornada === a[0]) + '" aria-controls="painel-jornada" tabindex="' + (abaJornada === a[0] ? 0 : -1) + '" data-acao="aba-jornada" data-id="' + a[0] + '">' + a[1] + '</button>').join('') + '</div>' +
+  '<div id="painel-jornada" role="tabpanel" aria-labelledby="aba-' + abaJornada + '">' + painel + '</div>';
+}
+
+function cartaoProduto(p, i) {
+  const src = fotoSrc(p);
+  return '<li class="prod"><div class="prod-img"><div class="prod-arte" aria-hidden="true">' + luaMini([0.5, 0.25, 0.75, 0.12, 0.38, 0.62, 0.88][i % 7], 72) + '</div>' +
+    (src ? '<img src="' + esc(src) + '" alt="" loading="lazy" data-some="1">' : '') + '</div>' +
+    '<h3>' + esc(p.nome) + '</h3><p class="prod-cat">' + esc(p.categoria || '') + '</p>' + (p.descricao ? '<p class="prod-desc">' + esc(p.descricao) + '</p>' : '') +
+    '<p class="prod-valor">' + preco(p.valor) + '</p>' +
+    (gerindo ? '<button type="button" class="btn btn-sec btn-p" data-acao="produto-editar" data-id="' + esc(p.id) + '">Editar</button>' : '') + '</li>';
+}
+function pgProdutos() {
+  const st = Nuvem.estado, lista = produtosAtuais();
+  const podeGerir = st === 'compartilhado' || st === 'local';
+  if (!podeGerir) gerindo = false;
+  let corpo;
+  if (st === 'aguardando') corpo = '<ul class="vitrine" aria-busy="true">' + [1, 2, 3, 4].map(() => '<li class="prod esqueleto"><div class="prod-img"></div><div class="esq-l"></div><div class="esq-l curta"></div></li>').join('') + '</ul><p class="meta">Carregando a vitrine.</p>';
+  else if (!lista.length) corpo = '<p class="vazio">' + (podeGerir ? 'A vitrine está vazia. Adicione o primeiro produto.' : 'A vitrine ainda não tem produtos.') + '</p>';
+  else corpo = '<ul class="vitrine">' + lista.map(cartaoProduto).join('') + '</ul>';
+  const nota = { compartilhado: 'O que você salvar aqui aparece para todo mundo que abrir o site.', local: 'Modo local: as mudanças ficam salvas só neste navegador.', indisponivel: 'Não deu para carregar a vitrine agora. Estes são produtos de exemplo.' }[st] || '';
+  return topo('Produtos', 'A vitrine da Clipse. Por enquanto é só para ver: a venda entra numa próxima etapa.') +
+    (podeGerir ? '<div class="painel-gerir"><div><strong>Painel da vitrine</strong><p class="meta">' + nota + '</p></div><div class="acoes">' +
+      (gerindo ? '<button type="button" class="btn btn-pri btn-p" data-acao="produto-novo">' + ic('soma', 16) + '<span>Adicionar produto</span></button>' : '') +
+      '<button type="button" class="btn btn-sec btn-p" data-acao="gerir" aria-pressed="' + gerindo + '">' + (gerindo ? 'Concluir' : 'Gerenciar vitrine') + '</button></div></div>'
+      : (nota ? '<p class="meta">' + nota + '</p>' : '')) +
+    '<section class="bloco">' + corpo + '</section>' +
+    notaIlustrativa('Produtos e valores ilustrativos.');
+}
+
+function pgParceiro() {
+  const p = estado.parceiro;
+  const tipos = ['Academia ou estúdio', 'Clínica ou consultório', 'Profissional autônomo', 'Grupo ou projeto gratuito', 'Outro'];
+  const form = p
+    ? '<div class="confirmado" role="status"><h3>Interesse registrado neste protótipo</h3><p>Nada foi enviado. Na versão final, a equipe Clipse recebe estes dados e responde em até três dias úteis.</p>' +
+      '<dl class="resumo"><div><dt>Espaço</dt><dd>' + esc(p.negocio) + '</dd></div><div><dt>Tipo</dt><dd>' + esc(p.tipo) + '</dd></div>' + (p.bairro ? '<div><dt>Bairro</dt><dd>' + esc(p.bairro) + '</dd></div>' : '') + '<div><dt>Contato</dt><dd>' + esc(p.contato) + '</dd></div></dl>' +
+      '<button type="button" class="btn btn-sec btn-p" data-acao="parceiro-editar">Editar dados</button></div>'
+    : '<form class="form" data-form="parceiro">' +
+      '<label for="pa-negocio">Nome do espaço ou do profissional</label><input type="text" id="pa-negocio" name="negocio" maxlength="80" required>' +
+      '<div class="duas"><div><label for="pa-tipo">Tipo</label><select id="pa-tipo" name="tipo">' + tipos.map((t) => '<option>' + t + '</option>').join('') + '</select></div>' +
+      '<div><label for="pa-bairro">Bairro</label><input type="text" id="pa-bairro" name="bairro" maxlength="40"></div></div>' +
+      '<label for="pa-contato">E-mail ou WhatsApp para retorno</label><input type="text" id="pa-contato" name="contato" maxlength="80" required>' +
+      '<label for="pa-msg">Conte um pouco sobre o espaço (opcional)</label><textarea id="pa-msg" name="msg" rows="3" maxlength="500"></textarea>' +
+      '<div class="acoes"><button class="btn btn-pri">Registrar interesse</button></div>' +
+      '<p class="meta">Protótipo: os dados ficam só neste navegador e nada é enviado.</p></form>';
+  return topo('Seja parceiro', 'Para academias, estúdios, clínicas, profissionais e grupos de Curitiba que acreditam em treino sem atalho.') +
+  '<section class="bloco"><h2>O que o parceiro ganha</h2><ul class="lista-ideias tres">' +
+    '<li><h3>Lugar no mapa</h3><p>Seu espaço aparece na página de Curitiba e na programação.</p></li>' +
+    '<li><h3>Gente chegando com contexto</h3><p>Pessoas indicadas pela comunidade, muitas voltando a treinar.</p></li>' +
+    '<li><h3>Um posicionamento claro</h3><p>O selo de espaço alinhado ao natural diz o que você defende.</p></li></ul></section>' +
+  '<section class="bloco"><h2>Como funciona</h2><ol class="passos">' +
+    '<li><h3>Você conta sobre o seu espaço</h3><p>Pelo formulário desta página.</p></li>' +
+    '<li><h3>A equipe Clipse conversa com você</h3><p>Para entender o trabalho e conferir o alinhamento com o natural.</p></li>' +
+    '<li><h3>Seu espaço entra no ar</h3><p>No mapa, na programação e na rede dos membros.</p></li></ol></section>' +
+  '<section class="bloco"><h2>Duas formas de participar</h2><ul class="lista-ideias">' +
+    '<li><h3>Parceiro com benefício</h3><p>Você oferece um desconto ou uma condição especial aos membros. Sem mensalidade.</p></li>' +
+    '<li><h3>Parceiro em destaque</h3><p>Uma mensalidade fixa coloca o espaço em destaque no mapa e traz eventos da programação para dentro dele.</p></li></ul>' +
+    '<p class="meta">Modelo em estudo no projeto.</p></section>' +
+  '<section class="bloco prosa"><h2>O que a Clipse pede</h2><p>Não vender nem indicar hormônios ou anabolizantes para estética, e receber sem cobrança quem está voltando.</p></section>' +
+  '<section class="bloco"><h2>Quero ser parceiro</h2>' + form + '</section>';
+}
+
+function pgHistorias() {
+  return topo('Histórias de retorno', 'Parar acontece com quase todo mundo. Aqui, quem voltou conta como foi.') +
+  notaIlustrativa('Histórias ilustrativas, inspiradas nos perfis que apareceram na pesquisa do projeto. Os nomes e os relatos são fictícios.') +
+  '<ul class="historias">' + C.historias.map((h) =>
+    '<li><article><p class="hist-fases">' + luaMini(C.fases[h.de].p, 22) + ic('seta', 14) + luaMini(C.fases[h.para].p, 22) + '<span>' + h.pausa + '</span></p>' +
+    '<h2>' + h.t + '</h2><p>' + h.d + '</p><p class="meta">' + h.quem + '</p></article></li>').join('') + '</ul>' +
+  '<section class="bloco faixa"><div><h2>A sua volta também conta</h2><p>Na sua jornada, cada volta fica registrada como um marco.</p><a class="btn btn-pri" href="#minha-jornada">Abrir minha jornada</a></div></section>';
+}
+
+function pgPerguntas() {
+  return topo('Perguntas frequentes', 'O que a Clipse é, como funciona e o que ela não promete.') +
+  '<div class="acordeao faq">' + C.perguntas.map((q) => '<details><summary><span class="sum-t">' + q.p + '</span>' + ic('baixo', 18) + '</summary><p>' + q.r + '</p></details>').join('') + '</div>' +
+  '<section class="bloco faixa"><div><h2>Ficou alguma dúvida?</h2><p>Os profissionais respondem perguntas ao vivo toda semana.</p><a class="btn btn-sec" href="#programacao">Ver a programação</a></div></section>';
+}
+
+function pgSobre() {
+  return topo('Sobre a Clipse', 'Uma plataforma para viver o fitness natural no próprio tempo.') +
+  '<section class="bloco sobre-nome"><div class="sobre-luas" aria-hidden="true">' + C.ordemFases.map((id) => luaMini(C.fases[id].p, 44)).join('') + '</div>' +
+    '<div class="prosa"><h2>O nome</h2><p>A lua tem fases, e as pessoas também. E a lua brilha com o sol: sem luz artificial, no ritmo dela.</p><p>Clipse vem de eclipse e guarda essa ideia. Quem está na Lua nova continua sendo lua.</p></div></section>' +
+  '<section class="bloco"><h2>O que guia a Clipse</h2><p class="sub">A essência é pertencer ao caminho natural. Quatro diretrizes saem dela.</p>' +
+    '<ul class="lista-ideias">' +
+      '<li><h3>Transparente</h3><p>Cada pessoa com a própria jornada, sem firula e sem promessa.</p></li>' +
+      '<li><h3>Inclusiva</h3><p>Público aberto. Toda atividade e todo ponto de partida cabem.</p></li>' +
+      '<li><h3>Ressignificada</h3><p>Tudo bem não ser perfeito na jornada. O tempo faz parte do resultado.</p></li>' +
+      '<li><h3>Constante</h3><p>O que se busca num estilo de vida fitness: seguir por perto, por anos.</p></li>' +
+    '</ul></section>' +
+  '<section class="bloco prosa"><h2>De onde vem</h2>' +
+    '<p>A Clipse nasceu de um Trabalho de Conclusão de Curso em Design na PUCPR, em 2026, sobre fisiculturismo natural e a cultura do resultado imediato.</p>' +
+    '<p>A pesquisa ouviu pessoas que treinam, pausam e voltam. A maior trava apareceu na volta, quando o empenho de antes parece distante. A plataforma existe para cuidar desse momento.</p>' +
+    '<p>O piloto é pensado para Curitiba. Projeto de Victor Bergmann.</p></section>' +
+  '<section class="bloco prosa"><h2>Este site</h2><p>É um protótipo navegável. Perfis, parceiros, histórias e valores são ilustrativos, e o login é simulado.</p></section>';
+}
+
+function pgEntrar() {
+  const u = estado.usuario;
+  return topo('Entrar', 'Crie a sua jornada em um minuto. O login é simulado: nada é enviado e tudo fica neste navegador.') +
+  (u && !estado.logado ? '<section class="bloco continuar"><p>Tem uma jornada de <strong>' + esc(u.nome) + '</strong> guardada neste navegador.</p><div class="acoes"><button type="button" class="btn btn-pri" data-acao="continuar">Continuar como ' + esc(String(u.nome).split(' ')[0]) + '</button></div></section>' : '') +
+  '<section class="bloco"><form class="form form-entrar" data-form="entrar">' +
+    (u ? '<h2>Criar uma jornada nova</h2><p class="meta">Criar uma jornada nova apaga a que está guardada neste navegador.</p>' : '') +
+    '<label for="en-nome">Como você quer ser chamado?</label><input type="text" id="en-nome" name="nome" maxlength="40" autocomplete="given-name" required>' +
+    '<label for="en-email">E-mail (opcional)</label><input type="email" id="en-email" name="email" maxlength="80" autocomplete="email">' +
+    '<fieldset><legend>Em que fase você está hoje?</legend><div class="escolha-fase">' + ['crescente', 'cheia', 'minguante', 'nova'].map((id, i) =>
+      '<input type="radio" name="fase" id="ef-' + id + '" value="' + id + '"' + (i === 0 ? ' checked' : '') + '><label for="ef-' + id + '">' + luaMini(C.fases[id].p, 30) + '<span><strong>' + C.fases[id].nome + '</strong><span>' + C.fases[id].curta + '</span></span></label>').join('') + '</div></fieldset>' +
+    '<div class="acoes"><button class="btn btn-pri">Criar minha jornada</button><button type="button" class="btn btn-sec" data-acao="exemplo">Ver com perfil de exemplo</button></div>' +
+  '</form></section>';
+}
+
+const PAGINAS = {
+  'inicio': pgInicio, 'por-que-natural': pgNatural, 'programacao': pgProgramacao, 'profissionais': pgProfissionais,
+  'planos': pgPlanos, 'curitiba': pgCuritiba, 'comunidade': pgComunidade, 'minha-jornada': pgJornada,
+  'produtos': pgProdutos, 'seja-parceiro': pgParceiro, 'historias': pgHistorias, 'perguntas': pgPerguntas,
+  'sobre': pgSobre, 'entrar': pgEntrar
+};
+
+/* ───────── Lua do início: arraste para mudar de fase ───────── */
+function pintarCeu(cv) {
+  const r = cv.getBoundingClientRect(); if (!r.width) return;
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  cv.width = Math.round(r.width * dpr); cv.height = Math.round(r.height * dpr);
+  const g = cv.getContext('2d'); g.scale(dpr, dpr);
+  let s = 11; const rnd = () => { s = (s * 1664525 + 1013904223) % 4294967296; return s / 4294967296; };
+  for (let i = 0; i < 80; i++) {
+    const x = rnd() * r.width, y = rnd() * r.height, t = rnd();
+    g.globalAlpha = 0.12 + t * 0.5; g.fillStyle = i % 6 === 0 ? '#C6A8FF' : '#F5F0FC';
+    g.beginPath(); g.arc(x, y, 0.4 + t * 1.0, 0, 6.3); g.fill();
+  }
+}
+function montarHeroi() {
+  const palco = $('#palco'); if (!palco) { heroi = null; return; }
+  const inicial = C.fases[estado.logado && estado.fase ? estado.fase : 'cheia'].p;
+  let idx = -1;
+  const legenda = (p) => {
+    const i = ((Math.round(p * 4) % 4) + 4) % 4; if (i === idx) return; idx = i;
+    const id = C.ordemFases[i], f = C.fases[id];
+    $('#legenda-fase').innerHTML = '<strong>' + f.nome + ', ' + f.curta.toLowerCase() + '</strong><span>' + f.texto + '</span>';
+    palco.setAttribute('aria-valuenow', String(i + 1)); palco.setAttribute('aria-valuetext', f.nome + ', ' + f.curta.toLowerCase());
+    $$('.trilho-item').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.fase === id)));
+  };
+  const mola = new Mola(inicial, (p) => { pintarLuaGrande('lua-heroi', p); legenda(p); }, 0.0006);
+  mola.fixar(inicial);
+  const ir = (alvo, v) => mola.ir(alvo, { velocidade: v, amortecimento: v && Math.abs(v) > 0.5 ? 0.8 : 1, resposta: 0.5 });
+  let arr = null;
+  palco.addEventListener('pointerdown', (e) => {
+    if (e.button) return;
+    try { palco.setPointerCapture(e.pointerId); } catch (x) {}
+    mola.parar();
+    arr = { id: e.pointerId, x0: e.clientX, p0: mola.x, larg: palco.offsetWidth || 300, hist: [{ t: e.timeStamp, p: e.clientX }], moveu: false };
+    palco.classList.add('agarrado');
+  });
+  palco.addEventListener('pointermove', (e) => {
+    if (!arr || e.pointerId !== arr.id) return;
+    const dx = e.clientX - arr.x0; if (Math.abs(dx) > 5) arr.moveu = true;
+    mola.x = arr.p0 + (dx / arr.larg) * 0.5; mola.v = 0; mola.alvo = mola.x; mola.aoMudar(mola.x);
+    arr.hist.push({ t: e.timeStamp, p: e.clientX }); if (arr.hist.length > 8) arr.hist.shift();
+  });
+  const solta = (e, cancelou) => {
+    if (!arr || e.pointerId !== arr.id) return;
+    const a = arr; arr = null; palco.classList.remove('agarrado');
+    if (cancelou) { ir(Math.round(mola.x * 4) / 4, 0); return; }
+    if (!a.moveu) { ir(Math.round(mola.x * 4) / 4 + 0.25, 0); return; }
+    const vpx = velocidadeDe(a.hist);
+    const fim = mola.x + (projetar(vpx, 0.99) / a.larg) * 0.5;
+    ir(Math.round(fim * 4) / 4, (vpx / a.larg) * 0.5);
+  };
+  palco.addEventListener('pointerup', (e) => solta(e, false));
+  palco.addEventListener('pointercancel', (e) => solta(e, true));
+  palco.addEventListener('keydown', (e) => {
+    const base = Math.round(mola.alvo * 4) / 4;
+    if (e.key === 'ArrowRight' || e.key === 'ArrowUp') { e.preventDefault(); ir(base + 0.25, 0); }
+    else if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') { e.preventDefault(); ir(base - 0.25, 0); }
+  });
+  const cv = $('#ceu'); if (cv) pintarCeu(cv);
+  heroi = { irFase: (id) => { const p = C.fases[id].p; ir(p + Math.round(mola.x - p), 0); } };
+}
+
+/* ───────── Casca: topo, abas, rodapé ───────── */
+const main = $('#conteudo');
+function listaPaginas(comDescricao) {
+  const grupos = [];
+  C.paginas.forEach((p) => { let g = grupos.find((x) => x.nome === p.grupo); if (!g) { g = { nome: p.grupo, itens: [] }; grupos.push(g); } g.itens.push(p); });
+  return grupos.map((g) => '<div class="menu-grupo"><h3>' + g.nome + '</h3><ul>' + g.itens.map((p) =>
+    '<li><a href="#' + p.id + '" data-nav="' + p.id + '">' + p.nome + (comDescricao && p.linha ? '<span>' + p.linha + '</span>' : '') + '</a></li>').join('') + '</ul></div>').join('');
+}
+function montarCasca() {
+  const principais = ['por-que-natural', 'programacao', 'profissionais', 'planos', 'curitiba', 'comunidade'];
+  $('#marca').innerHTML = luaMini(0.25, 22) + '<span>Clipse</span>';
+  $('#tabbar').innerHTML =
+    '<a href="#inicio" data-nav="inicio">' + ic('inicio', 24) + '<span>Início</span></a>' +
+    '<a href="#por-que-natural" data-nav="por-que-natural">' + ic('folha', 24) + '<span>Natural</span></a>' +
+    '<a href="#minha-jornada" data-nav="minha-jornada"><span id="tab-lua" class="tab-lua"></span><span>Jornada</span></a>' +
+    '<a href="#comunidade" data-nav="comunidade">' + ic('pessoas', 24) + '<span>Comunidade</span></a>' +
+    '<button type="button" id="tab-mais" data-acao="menu">' + ic('mais', 24) + '<span>Mais</span></button>';
+  $('#nav-topo').innerHTML = principais.map((id) => { const p = C.paginas.find((x) => x.id === id); return '<a href="#' + id + '" data-nav="' + id + '">' + p.nome + '</a>'; }).join('') +
+    '<button type="button" class="nav-mais" data-acao="menu" aria-expanded="false" aria-controls="popover">Mais' + ic('baixo', 16) + '</button>';
+  $('#popover').innerHTML = listaPaginas(false);
+  $('#rodape').innerHTML = '<div class="rodape-in">' +
+    '<div class="rodape-marca"><a class="marca" href="#inicio">' + luaMini(0.25, 22) + '<span>Clipse</span></a><p>Fitness natural, no seu tempo. Piloto em Curitiba.</p></div>' +
+    '<nav class="rodape-nav" aria-label="Mapa do site">' + listaPaginas(false) + '</nav>' +
+    '<div class="rodape-avisos"><p><strong>Aviso de saúde.</strong> O conteúdo da Clipse é informativo e não substitui o acompanhamento de médico, nutricionista, psicólogo ou profissional de educação física.</p>' +
+    '<p>Protótipo acadêmico de um TCC de Design na PUCPR, 2026. Perfis, parceiros, histórias e valores são ilustrativos.</p></div></div>';
+  atualizarConta();
+}
+function atualizarConta() {
+  const c = $('#conta');
+  c.innerHTML = estado.logado
+    ? '<a class="conta-on" href="#minha-jornada" data-nav="minha-jornada" aria-label="Minha jornada, ' + esc(C.fases[estado.fase].nome) + '">' + luaMini(C.fases[estado.fase].p, 22) + '<span>' + esc(primeiroNome()) + '</span></a>'
+    : '<a class="btn btn-pri btn-p" href="#entrar">Entrar</a>';
+  const tj = $('#tab-lua'); if (tj) tj.innerHTML = luaMini(estado.logado ? C.fases[estado.fase].p : 0.25, 24, estado.logado ? '' : 'apagada');
+}
+function marcarNav() {
+  $$('[data-nav]').forEach((a) => { if (a.dataset.nav === rota) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
+  const naBarra = ['inicio', 'por-que-natural', 'minha-jornada', 'comunidade'].indexOf(rota) >= 0 || rota === 'entrar';
+  const m = $('#tab-mais'); if (m) m.classList.toggle('on', !naBarra);
+  const nm = $('.nav-mais'); if (nm) nm.classList.toggle('on', ['produtos', 'historias', 'seja-parceiro', 'perguntas', 'sobre'].indexOf(rota) >= 0);
+}
+function fecharPopover() { const p = $('#popover'); if (p && !p.hidden) { p.hidden = true; const b = $('.nav-mais'); if (b) b.setAttribute('aria-expanded', 'false'); } }
+
+/* ───────── Rotas ───────── */
+function rotaDaUrl() { const h = (location.hash || '').replace(/^#/, ''); return PAGINAS[h] ? h : 'inicio'; }
+function aposPintar() {
+  if (rota === 'inicio') montarHeroi(); else heroi = null;
+  if (rota === 'minha-jornada' && estado.logado) {
+    const alvo = C.fases[estado.fase].p;
+    if (animarLuaDe != null && !reduzMovimento()) {
+      const m = new Mola(animarLuaDe, (p) => pintarLuaGrande('lua-jornada', p), 0.0006);
+      m.fixar(animarLuaDe); m.ir(alvo + Math.round(animarLuaDe - alvo), { amortecimento: 0.85, resposta: 0.7 });
+    } else pintarLuaGrande('lua-jornada', alvo);
+    animarLuaDe = null;
+  }
+}
+function navegar(primeira) {
+  let r = rotaDaUrl();
+  if (r === 'entrar' && estado.logado) { location.hash = 'minha-jornada'; return; }
+  Folha.fechar(); fecharPopover();
+  rota = r;
+  main.innerHTML = '<div class="pagina pg-' + r + (primeira ? '' : ' troca') + '">' + PAGINAS[r]() + '</div>';
+  aposPintar(); marcarNav(); atualizarConta();
+  if (!primeira) { window.scrollTo(0, 0); try { main.focus({ preventScroll: true }); } catch (e) {} }
+}
+function pintar() {
+  const y = window.scrollY, at = document.activeElement;
+  let foco = null;
+  if (at && main.contains(at)) {
+    const q = (v) => (window.CSS && CSS.escape ? CSS.escape(v) : String(v).replace(/"/g, '\\"'));
+    if (at.id) foco = '#' + q(at.id);
+    else if (at.dataset && at.dataset.acao) foco = '[data-acao="' + q(at.dataset.acao) + '"]' + (at.dataset.id ? '[data-id="' + q(at.dataset.id) + '"]' : '') + (at.dataset.tipo ? '[data-tipo="' + q(at.dataset.tipo) + '"]' : '');
+  }
+  main.innerHTML = '<div class="pagina pg-' + rota + '">' + PAGINAS[rota]() + '</div>';
+  aposPintar(); marcarNav(); atualizarConta();
+  window.scrollTo(0, y);
+  if (foco) { try { const n = main.querySelector(foco); if (n) n.focus({ preventScroll: true }); } catch (e) {} }
+}
+
+/* ───────── Folhas de conteúdo ───────── */
+function pedirEntrada(msg) {
+  Folha.abrir({ titulo: 'Entre para guardar', html: '<p>' + msg + '</p><p class="meta">O login é simulado e os dados ficam só neste navegador.</p>' +
+    '<div class="acoes"><a class="btn btn-pri" href="#entrar" data-acao="fechar-folha">Entrar</a><button type="button" class="btn btn-sec" data-acao="exemplo">Ver com perfil de exemplo</button></div>' });
+}
+function abrirBloqueio(msg, plano) {
+  Folha.abrir({ titulo: 'Plano ' + nomePlano(plano), html: '<p>' + msg + '</p><p class="meta">Neste protótipo a troca de plano é simulada. Nada é cobrado.</p><div class="acoes">' +
+    (estado.logado ? '<button type="button" class="btn btn-pri" data-acao="plano" data-id="' + plano + '">Simular ' + nomePlano(plano) + '</button>' : '<a class="btn btn-pri" href="#entrar" data-acao="fechar-folha">Entrar para continuar</a>') +
+    '<a class="btn btn-sec" href="#planos" data-acao="fechar-folha">Ver planos</a></div>' });
+}
+function abrirAula(id) {
+  const a = C.aulas.find((x) => x.id === id); if (!a) return;
+  if (!temAcesso(a.plano)) { abrirBloqueio('Esta aula faz parte do ' + nomePlano(a.plano) + '.', a.plano); return; }
+  const vista = estado.logado && estado.aulas.indexOf(id) >= 0;
+  Folha.abrir({ titulo: a.t, html:
+    '<div class="player"><span class="player-play" aria-hidden="true">' + ic('play', 28) + '</span><span class="player-nota">Vídeo ilustrativo. A gravação entra na versão final.</span></div>' +
+    '<p class="meta">' + a.min + ' minutos, com ' + esc(a.por) + ', ' + esc(a.papel) + '.</p>' +
+    '<h3>Nesta aula</h3><ul class="pontos">' + a.resumo.map((r) => '<li>' + r + '</li>').join('') + '</ul>' +
+    '<div class="acoes"><button type="button" class="btn ' + (vista ? 'btn-sec' : 'btn-pri') + '" data-acao="aula-vista" data-id="' + id + '">' + (vista ? 'Desmarcar como assistida' : 'Marcar como assistida') + '</button></div>' });
+}
+function abrirProf(id) {
+  const p = C.profissionais.find((x) => x.id === id); if (!p) return;
+  Folha.abrir({ titulo: p.nome, html: '<p class="papel">' + p.papel + ', ' + p.onde + '</p><p>' + p.bio + '</p><h3>Como acompanha na Clipse</h3><p>' + p.como + '</p>' +
+    '<p class="meta">Perfil ilustrativo.</p><div class="acoes">' + botaoSalvar('profissionais', p.id) + '<a class="btn btn-sec btn-p" href="#planos" data-acao="fechar-folha">Ver planos</a></div>' });
+}
+function abrirFases() {
+  Folha.abrir({ titulo: 'Em que fase você está?', html: '<p class="meta">Você escolhe, e dá para trocar quando quiser.</p><div class="opcoes-fase">' +
+    ['cheia', 'minguante', 'nova', 'crescente'].map((id) => { const f = C.fases[id], on = estado.fase === id;
+      return '<button type="button" class="opcao-fase' + (on ? ' on' : '') + '" data-acao="escolher-fase" data-fase="' + id + '" aria-pressed="' + on + '">' + luaMini(f.p, 36) + '<span class="of-t"><strong>' + f.nome + (on ? ', sua fase atual' : '') + '</strong><span>' + f.curta + '. ' + f.texto + '</span></span></button>'; }).join('') + '</div>' });
+}
+function abrirPausa() {
+  const motivos = ['Trabalho', 'Estudos', 'Saúde', 'Família', 'Viagem', 'Cansaço', 'Outro'];
+  Folha.abrir({ titulo: 'Lua nova', html: '<form class="form" data-form="pausa"><p>Pausar faz parte do ciclo. Sua jornada fica guardada.</p>' +
+    '<fieldset><legend>Quer registrar o motivo? É opcional e só você vê.</legend><div class="chips">' + motivos.map((m, i) => '<input type="radio" name="motivo" id="mo-' + i + '" value="' + m + '"><label for="mo-' + i + '">' + m + '</label>').join('') + '</div></fieldset>' +
+    '<label for="pausa-nota">Um recado para você (opcional)</label><input type="text" id="pausa-nota" name="nota" maxlength="120">' +
+    '<div class="acoes"><button class="btn btn-pri">Entrar na Lua nova</button></div></form>' });
+}
+function mudarFase(id, extra) {
+  const ant = estado.fase;
+  if (ant === id || !C.fases[id]) { Folha.fechar(); return; }
+  const hoje = hojeISO(), item = { fase: id, data: hoje };
+  if (extra && extra.motivo) item.motivo = extra.motivo;
+  if (extra && extra.nota) item.nota = extra.nota;
+  let volta = null;
+  if (ant === 'nova') {
+    let ini = hoje; for (let i = estado.historico.length - 1; i >= 0; i--) { if (estado.historico[i].fase === 'nova') ini = estado.historico[i].data; else break; }
+    volta = { data: hoje, dias: diasEntre(ini, hoje) }; estado.voltas.push(volta);
+  }
+  estado.historico.push(item); estado.fase = id; gravar();
+  Folha.fechar();
+  animarLuaDe = C.fases[ant] ? C.fases[ant].p : null;
+  abaJornada = 'hoje';
+  if (rota === 'minha-jornada') { pintar(); window.scrollTo(0, 0); }
+  avisar(volta ? 'Volta registrada. É a sua ' + estado.voltas.length + 'ª volta.' : 'Fase atualizada: ' + C.fases[id].nome + '.');
+}
+function abrirProduto(id) {
+  const p = id ? produtosAtuais().find((x) => x.id === id) : null;
+  if (id && !p) return;
+  fotoPendente = undefined;
+  const src = p ? fotoSrc(p) : '';
+  const comFoto = Nuvem.estado === 'local' || !!Nuvem.assets;
+  Folha.abrir({ titulo: p ? 'Editar produto' : 'Novo produto', html:
+    '<form class="form" data-form="produto" data-id="' + (p ? esc(p.id) : '') + '">' +
+    '<label for="pd-nome">Nome</label><input type="text" id="pd-nome" name="nome" maxlength="60" required value="' + (p ? esc(p.nome) : '') + '">' +
+    '<div class="duas"><div><label for="pd-cat">Categoria</label><select id="pd-cat" name="categoria">' + C.categoriasProduto.map((c) => '<option' + (p && p.categoria === c ? ' selected' : '') + '>' + c + '</option>').join('') + '</select></div>' +
+    '<div><label for="pd-valor">Valor em reais</label><input type="text" id="pd-valor" name="valor" inputmode="decimal" placeholder="89,90" required value="' + (p ? esc((Number(p.valor) || 0).toFixed(2).replace('.', ',')) : '') + '"></div></div>' +
+    '<label for="pd-desc">Descrição curta</label><input type="text" id="pd-desc" name="descricao" maxlength="90" value="' + (p ? esc(p.descricao || '') : '') + '">' +
+    (comFoto ? '<label for="pd-foto">Foto</label><div class="foto-campo"><div class="foto-previa" id="pd-previa">' + (src ? '<img src="' + esc(src) + '" alt="">' : '<span>Sem foto</span>') + '</div>' +
+      '<div class="foto-lado"><input type="file" id="pd-foto" name="foto" accept="image/png,image/jpeg,image/webp">' +
+      '<button type="button" class="link" id="pd-tirar" data-acao="produto-tirar-foto"' + (src ? '' : ' hidden') + '>Remover foto</button><p class="meta">JPG, PNG ou WebP. A imagem é reduzida antes de salvar.</p></div></div>'
+      : '<p class="meta">O envio de fotos não está disponível nesta visita.</p>') +
+    '<p class="erro" id="pd-erro" role="alert" hidden></p>' +
+    '<div class="acoes"><button class="btn btn-pri" id="pd-salvar">Salvar produto</button>' + (p ? '<button type="button" class="btn btn-perigo" data-acao="produto-excluir" data-id="' + esc(p.id) + '">Excluir</button>' : '') + '</div></form>',
+    aoMontar: (c) => {
+      const campo = $('#pd-foto', c); if (!campo) return;
+      campo.addEventListener('change', async () => {
+        const arq = campo.files && campo.files[0]; if (!arq) return;
+        try {
+          fotoPendente = await reduzirImagem(arq, 1000, 0.84);
+          $('#pd-previa').innerHTML = '<img src="' + fotoPendente.url + '" alt="">'; $('#pd-tirar').hidden = false; erroProduto('');
+        } catch (e) { erroProduto('Não consegui ler essa imagem. Escolha outro arquivo.'); }
+      });
+    } });
+}
+function erroProduto(msg) { const e = $('#pd-erro'); if (!e) return; e.textContent = msg; e.hidden = !msg; }
+function confirmar(titulo, msg, rotulo, acao) {
+  Folha.abrir({ titulo: titulo, html: '<p>' + msg + '</p><div class="acoes"><button type="button" class="btn btn-perigo" data-acao="' + acao + '">' + rotulo + '</button><button type="button" class="btn btn-sec" data-acao="fechar-folha">Cancelar</button></div>' });
+}
+
+/* ───────── Ações ───────── */
+function alternarSalvo(tipo, id) {
+  const l = estado.salvos[tipo]; if (!l) return false;
+  const i = l.indexOf(id); if (i >= 0) l.splice(i, 1); else l.push(id);
+  gravar(); return i < 0;
+}
+const ACOES = {
+  'menu': (el) => {
+    if (telaLarga()) { const p = $('#popover'), abrir = p.hidden; p.hidden = !abrir; el.setAttribute('aria-expanded', String(abrir)); if (abrir) marcarNav(); }
+    else Folha.abrir({ titulo: 'Todas as páginas', html: '<nav class="menu-folha" aria-label="Todas as páginas">' + listaPaginas(true) + '</nav>', aoMontar: marcarNav });
+  },
+  'fechar-folha': () => Folha.fechar(),
+  'heroi-fase': (el) => { if (heroi) heroi.irFase(el.dataset.fase); },
+  'aula': (el) => abrirAula(el.dataset.id),
+  'aula-vista': (el) => {
+    if (!estado.logado) { pedirEntrada('Entre na sua jornada para guardar as aulas que você assistiu.'); return; }
+    const id = el.dataset.id, i = estado.aulas.indexOf(id);
+    if (i >= 0) estado.aulas.splice(i, 1); else estado.aulas.push(id);
+    gravar(); Folha.fechar(); pintar(); avisar(i >= 0 ? 'Aula desmarcada.' : 'Aula marcada como assistida.');
+  },
+  'salvar': (el) => {
+    if (!estado.logado) { pedirEntrada('Entre na sua jornada para montar a sua rede.'); return; }
+    const entrou = alternarSalvo(el.dataset.tipo, el.dataset.id);
+    if (Folha.aberta) Folha.fechar();
+    pintar(); avisar(entrou ? 'Salvo na sua rede.' : 'Tirado da sua rede.');
+  },
+  'tirar-salvo': (el) => { alternarSalvo(el.dataset.tipo, el.dataset.id); pintar(); avisar('Tirado da sua rede.'); },
+  'filtro-prof': (el) => { filtroProf = el.dataset.id; pintar(); },
+  'prof': (el) => abrirProf(el.dataset.id),
+  'plano': (el) => {
+    const id = el.dataset.id;
+    if (!estado.logado) { Folha.fechar(); location.hash = 'entrar'; avisar('Entre para escolher um plano.'); return; }
+    if (!NIVEL.hasOwnProperty(id)) return;
+    estado.plano = id; gravar(); Folha.fechar(); pintar();
+    avisar('Plano ' + nomePlano(id) + ' ativado na simulação. Nada foi cobrado.');
+  },
+  'filtro-local': (el) => { filtroLocal = el.dataset.id; pintar(); },
+  'local': (el) => {
+    selLocal = selLocal === el.dataset.id && !el.dataset.rolar ? null : el.dataset.id;
+    const rolar = !!el.dataset.rolar; pintar();
+    if (rolar) { const m = $('#cidade-mapa'); if (m && !telaLarga()) m.scrollIntoView({ behavior: reduzMovimento() ? 'auto' : 'smooth', block: 'start' }); }
+  },
+  'grupo': (el) => {
+    if (!estado.logado) { pedirEntrada('Entre na sua jornada para participar de um grupo.'); return; }
+    const id = el.dataset.id, dentro = estado.salvos.grupos.indexOf(id) >= 0;
+    if (!dentro && !temAcesso('premium')) { abrirBloqueio('A participação em grupos faz parte do Premium.', 'premium'); return; }
+    alternarSalvo('grupos', id); pintar(); avisar(dentro ? 'Você saiu do grupo.' : 'Você entrou no grupo.');
+  },
+  'aba-jornada': (el) => { abaJornada = el.dataset.id; pintar(); const a = $('#aba-' + abaJornada); if (a) a.focus({ preventScroll: true }); },
+  'mudar-fase': () => abrirFases(),
+  'escolher-fase': (el) => { const id = el.dataset.fase; if (id === 'nova' && estado.fase !== 'nova') abrirPausa(); else mudarFase(id); },
+  'toggle-objetivo': (el) => { const o = estado.objetivos.find((x) => x.id === el.dataset.id); if (o) { o.rotina = !o.rotina; gravar(); pintar(); } },
+  'del-objetivo': (el) => { estado.objetivos = estado.objetivos.filter((x) => x.id !== el.dataset.id); gravar(); pintar(); },
+  'del-diario': (el) => { estado.diario = estado.diario.filter((x) => x.id !== el.dataset.id); gravar(); pintar(); avisar('Anotação apagada.'); },
+  'sair': () => { estado.logado = false; gravar(); location.hash = 'inicio'; avisar('Você saiu. Sua jornada continua guardada neste navegador.'); },
+  'apagar': () => confirmar('Apagar minha jornada', 'Isso apaga fases, check-ins, diário, objetivos e rede deste navegador. Não dá para desfazer.', 'Apagar tudo', 'apagar-sim'),
+  'apagar-sim': () => { estado = PADRAO(); gravar(); abaJornada = 'hoje'; Folha.fechar(); if (rota === 'inicio') pintar(); else location.hash = 'inicio'; avisar('Jornada apagada deste navegador.'); },
+  'continuar': () => { estado.logado = true; gravar(); location.hash = 'minha-jornada'; },
+  'exemplo': () => {
+    if (estado.usuario && !estado.exemplo) { confirmar('Perfil de exemplo', 'Entrar com o perfil de exemplo substitui a jornada de ' + esc(estado.usuario.nome) + ' guardada neste navegador.', 'Substituir e entrar', 'exemplo-sim'); return; }
+    ACOES['exemplo-sim']();
+  },
+  'exemplo-sim': () => {
+    estado = perfilExemplo(); gravar(); abaJornada = 'hoje'; Folha.fechar();
+    if (rota === 'minha-jornada') pintar(); else location.hash = 'minha-jornada';
+    avisar('Você entrou com a Ana, um perfil de exemplo.');
+  },
+  'gerir': () => { gerindo = !gerindo; pintar(); },
+  'produto-novo': () => abrirProduto(null),
+  'produto-editar': (el) => abrirProduto(el.dataset.id),
+  'produto-tirar-foto': (el) => { fotoPendente = null; const pv = $('#pd-previa'); if (pv) pv.innerHTML = '<span>Sem foto</span>'; const c = $('#pd-foto'); if (c) c.value = ''; el.hidden = true; },
+  'produto-excluir': async (el) => {
+    if (!el.dataset.certo) { el.dataset.certo = '1'; el.textContent = 'Confirmar exclusão'; return; }
+    el.disabled = true;
+    try { await excluirProduto(el.dataset.id); Folha.fechar(); avisar('Produto excluído.'); }
+    catch (e) { el.disabled = false; erroProduto(mensagemErro(e)); }
+  },
+  'parceiro-editar': () => { estado.parceiro = null; gravar(); pintar(); },
+  'pular': () => { try { main.focus(); } catch (e) {} main.scrollIntoView(); }
+};
+const FORMS = {
+  'entrar': (f) => {
+    const d = new FormData(f), nome = String(d.get('nome') || '').trim(); if (!nome) return;
+    const fase = C.fases[d.get('fase')] ? d.get('fase') : 'crescente';
+    estado = PADRAO();
+    estado.usuario = { nome: nome, email: String(d.get('email') || '').trim(), desde: hojeISO() };
+    estado.logado = true; estado.fase = fase; estado.historico = [{ fase: fase, data: hojeISO() }];
+    gravar(); abaJornada = 'hoje'; location.hash = 'minha-jornada';
+    avisar('Jornada criada. Boas-vindas, ' + nome.split(' ')[0] + '.');
+  },
+  'checkin': (f) => {
+    const d = new FormData(f);
+    estado.checkins[hojeISO()] = { energia: d.get('energia') || '', fez: d.getAll('fez'), nota: String(d.get('nota') || '').trim() };
+    gravar(); pintar(); avisar('Check-in salvo.');
+  },
+  'objetivo': (f) => {
+    const t = String(new FormData(f).get('texto') || '').trim(); if (!t) return;
+    estado.objetivos.push({ id: 'o' + novoId(), texto: t, rotina: false }); gravar(); pintar();
+    const c = $('#obj-novo'); if (c) c.focus({ preventScroll: true });
+  },
+  'diario': async (f) => {
+    const d = new FormData(f), texto = String(d.get('texto') || '').trim(); if (!texto) return;
+    const item = { id: 'd' + novoId(), data: hojeISO(), texto: texto };
+    const arq = d.get('foto');
+    if (arq && arq.size) { try { item.foto = (await reduzirImagem(arq, 720, 0.78)).dataURL; } catch (e) {} }
+    estado.diario.unshift(item);
+    if (!gravar() && item.foto) { delete item.foto; gravar(); pintar(); avisar('Anotação guardada sem a foto: este navegador ficou sem espaço.'); return; }
+    pintar(); avisar('Guardado no diário.');
+  },
+  'pausa': (f) => { const d = new FormData(f); mudarFase('nova', { motivo: d.get('motivo') || '', nota: String(d.get('nota') || '').trim() }); },
+  'parceiro': (f) => {
+    const d = new FormData(f), negocio = String(d.get('negocio') || '').trim(), contato = String(d.get('contato') || '').trim();
+    if (!negocio || !contato) return;
+    estado.parceiro = { negocio: negocio, tipo: String(d.get('tipo') || ''), bairro: String(d.get('bairro') || '').trim(), contato: contato, msg: String(d.get('msg') || '').trim(), data: hojeISO() };
+    gravar(); pintar(); avisar('Interesse registrado neste protótipo.');
+  },
+  'produto': async (f) => {
+    const d = new FormData(f), nome = String(d.get('nome') || '').trim(), valor = lerValor(d.get('valor'));
+    if (!nome) { erroProduto('Dê um nome ao produto.'); return; }
+    if (valor === null) { erroProduto('Informe o valor em reais, como 89,90.'); return; }
+    const b = $('#pd-salvar'); b.disabled = true; b.textContent = 'Salvando';
+    try {
+      await salvarProduto(f.dataset.id || null, { nome: nome, categoria: String(d.get('categoria') || 'Outros'), valor: valor, descricao: String(d.get('descricao') || '').trim() });
+      Folha.fechar(); avisar('Produto salvo.');
+    } catch (e) { b.disabled = false; b.textContent = 'Salvar produto'; erroProduto(mensagemErro(e)); }
+  }
+};
+
+document.addEventListener('click', (e) => {
+  const el = e.target.closest('[data-acao]');
+  const elo = e.target.closest('a[href^="#"]');
+  const pop = $('#popover');
+  if (pop && !pop.hidden && (elo || !e.target.closest('#popover')) && !(el && el.dataset.acao === 'menu')) fecharPopover();
+  if (elo && !(el && el.dataset.acao === 'pular')) {
+    if (elo.closest('#folha')) Folha.fechar();
+    if (elo.getAttribute('href').slice(1) === rota) window.scrollTo({ top: 0, behavior: reduzMovimento() ? 'auto' : 'smooth' });
+  }
+  if (!el) return;
+  const f = ACOES[el.dataset.acao]; if (!f) return;
+  if (el.tagName !== 'A' || el.dataset.acao === 'pular') e.preventDefault();
+  f(el, e);
+});
+document.addEventListener('submit', (e) => {
+  const f = e.target.closest('form[data-form]'); if (!f) return;
+  e.preventDefault();
+  const h = FORMS[f.dataset.form]; if (h) h(f, e);
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') fecharPopover();
+  const t = e.target;
+  if ((e.key === 'Enter' || e.key === ' ') && t && t.matches && t.matches('g[role="button"][data-acao]')) { e.preventDefault(); t.dispatchEvent(new MouseEvent('click', { bubbles: true })); }
+  if ((e.key === 'ArrowRight' || e.key === 'ArrowLeft') && t && t.matches && t.matches('[role="tab"]')) {
+    const abas = $$('[role="tab"]', t.parentNode), i = abas.indexOf(t), n = abas[(i + (e.key === 'ArrowRight' ? 1 : abas.length - 1)) % abas.length];
+    if (n) { e.preventDefault(); n.click(); }
+  }
+});
+document.addEventListener('error', (e) => { const t = e.target; if (t && t.tagName === 'IMG' && t.dataset && t.dataset.some) t.remove(); }, true);
+window.addEventListener('hashchange', () => navegar(false));
+let tRedim = 0;
+window.addEventListener('resize', () => { clearTimeout(tRedim); tRedim = setTimeout(() => { const cv = $('#ceu'); if (cv) pintarCeu(cv); }, 180); });
+
+/* ───────── Partida ───────── */
+function iniciar(guardado) {
+  estado = normalizar(guardado && guardado.v ? guardado : lerLocal());
+  Folha.montar(); montarCasca(); navegar(true); ligarNuvem();
+}
+const quente = window.claude && window.claude.hot;
+try { if (quente && quente.snapshot) quente.snapshot(() => JSON.parse(JSON.stringify(estado))); } catch (e) {}
+if (quente && quente.ready) quente.ready(iniciar); else iniciar((quente && quente.data) || {});
+})();
