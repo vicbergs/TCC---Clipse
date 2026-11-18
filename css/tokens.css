@@ -1,0 +1,65 @@
+/* Clipse — tokens gerados de tokens.json. Tema padrão: noite. Tema claro: [data-theme="lua"]. */
+
+:root {
+  --noite: #141826;
+  --eclipse: #232A44;
+  --lua: #F2EDE3;
+  --lua-2: #E6DFD2;
+  --sol: #E8A93A;
+  --salvia: #9CB59B;
+  --surface: #141826;
+  --surface-raised: #232A44;
+  --surface-sunken: #0F1220;
+  --ink: #F2EDE3;
+  --ink-muted: #AEB3C6;
+  --line: #2C3350;
+  --line-strong: #5C6589;
+  --accent: var(--sol);
+  --on-accent: #141826;
+  --accent-text: #E8A93A;
+  --support: var(--salvia);
+  --support-text: #9CB59B;
+  --alert-text: #E89A8A;
+  --focus-ring: #E8A93A;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --space-8: 64px;
+  --radius-sm: 8px;
+  --radius-md: 16px;
+  --radius-lg: 24px;
+  --radius-xl: 32px;
+  --radius-pill: 999px;
+  --font-sans: "Outfit", "Helvetica Neue", Arial, sans-serif;
+  --font-serif: "Instrument Serif", Georgia, serif;
+}
+
+[data-theme="lua"] {
+  --surface: #F2EDE3;
+  --surface-raised: #FBF8F2;
+  --surface-sunken: #E6DFD2;
+  --ink: #141826;
+  --ink-muted: #454B60;
+  --line: #D3CBBB;
+  --line-strong: #8A8270;
+  --accent: var(--sol);
+  --on-accent: #141826;
+  --accent-text: #7E5208;
+  --support: var(--salvia);
+  --support-text: #3F6B45;
+  --alert-text: #A04A3A;
+  --focus-ring: #7E5208;
+}
+
+.t-display { font-family: var(--font-sans); font-size: 56px; line-height: 1.02; font-weight: 600; letter-spacing: -0.02em; }  /* Peças-chave e capas. Uma por tela. */
+.t-title { font-family: var(--font-sans); font-size: 32px; line-height: 1.1; font-weight: 600; letter-spacing: -0.01em; }  /* Título de tela no app e no site. */
+.t-heading { font-family: var(--font-sans); font-size: 22px; line-height: 1.25; font-weight: 600; letter-spacing: 0; }  /* Título de cartão e de seção. */
+.t-quote { font-family: var(--font-serif); font-size: 32px; line-height: 1.15; font-weight: 400; letter-spacing: 0; font-style: italic; }  /* Frases curtas de manifesto e histórias de retorno. Nunca em botão ou texto longo. */
+.t-body { font-family: var(--font-sans); font-size: 17px; line-height: 1.55; font-weight: 400; letter-spacing: 0; }  /* Texto corrido, mobile first. */
+.t-body-sm { font-family: var(--font-sans); font-size: 15px; line-height: 1.5; font-weight: 400; letter-spacing: 0; }  /* Descrições em cartão. */
+.t-label { font-family: var(--font-sans); font-size: 13px; line-height: 1.3; font-weight: 500; letter-spacing: 0.08em; }  /* Rótulos em caixa-alta, em accent-text. */
+.t-button { font-family: var(--font-sans); font-size: 16px; line-height: 1; font-weight: 600; letter-spacing: 0; }  /* Texto de botão. */

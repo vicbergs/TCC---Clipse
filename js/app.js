@@ -10,6 +10,7 @@ const reduzMovimento = () => window.matchMedia('(prefers-reduced-motion: reduce)
 const telaLarga = () => window.matchMedia('(min-width: 760px)').matches;
 
 /* ───────── Datas ───────── */
+const LOGO = '<img class="logo-escuro" src="assets/horizontal-lua.svg" alt="Clipse" width="125" height="34"><img class="logo-claro" src="assets/horizontal-noite.svg" alt="Clipse" width="125" height="34">';
 const iso = (d) => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
 const hojeISO = () => iso(new Date());
 const deISO = (s) => { const p = String(s).split('-').map(Number); return new Date(p[0], (p[1] || 1) - 1, p[2] || 1); };
@@ -54,20 +55,20 @@ function pintarLuaGrande(id, p) {
 
 /* ───────── Ícones ───────── */
 const IC = {
-  inicio: '<path d="M4 11.5 12 4l8 7.5V20a1 1 0 0 1-1 1h-4.5v-6h-5v6H5a1 1 0 0 1-1-1z"/>',
-  folha: '<path d="M5 19C5 11 10 6 19 5c0 9-5 14-14 14z"/><path d="M5 19c3-5 6-8 10-10"/>',
-  pessoas: '<circle cx="9" cy="8.5" r="3.2"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><circle cx="17.2" cy="9.5" r="2.4"/><path d="M16.4 14.3c2.6.3 4.6 2.6 4.6 5.7"/>',
+  inicio: '<path d="M4 11l8-7 8 7v8a1 1 0 0 1-1 1h-4v-6H9v6H5a1 1 0 0 1-1-1z"/>',
+  folha: '<path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/>',
+  pessoas: '<circle cx="9" cy="9" r="3"/><path d="M3.5 19a5.5 5.5 0 0 1 11 0"/><circle cx="17" cy="9.5" r="2.5"/><path d="M16 14.3a4.5 4.5 0 0 1 4.5 4.7"/>',
   mais: '<circle cx="5" cy="12" r="1.5" fill="currentColor"/><circle cx="12" cy="12" r="1.5" fill="currentColor"/><circle cx="19" cy="12" r="1.5" fill="currentColor"/>',
-  fechar: '<path d="M6 6l12 12M18 6 6 18"/>',
-  seta: '<path d="M9 5l7 7-7 7"/>',
+  fechar: '<path d="M6 6l12 12M18 6L6 18"/>',
+  seta: '<path d="M5 12h14M13 6l6 6-6 6"/>',
   baixo: '<path d="M6 9l6 6 6-6"/>',
   play: '<path d="M8 5.5v13l11-6.5z" fill="currentColor"/>',
   cadeado: '<rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>',
   check: '<path d="M5 12.5l4.5 4.5L19 7.5"/>',
-  soma: '<path d="M12 5v14M5 12h14"/>',
+  soma: '<circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/>',
   marca: '<path d="M7 4h10a1 1 0 0 1 1 1v15l-6-4-6 4V5a1 1 0 0 1 1-1z"/>'
 };
-const ic = (n, t) => '<svg class="ic" width="' + (t || 22) + '" height="' + (t || 22) + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + IC[n] + '</svg>';
+const ic = (n, t) => '<svg class="ic" width="' + (t || 22) + '" height="' + (t || 22) + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + IC[n] + '</svg>';
 
 /* ───────── Mola: amortecimento (1 = sem quique) + resposta em segundos. Interrompível e sensível à velocidade. ───────── */
 class Mola {
@@ -416,7 +417,7 @@ function hubSVG() {
   return '<svg class="hub" viewBox="0 0 400 120" aria-hidden="true" focusable="false">' +
     nos.map((n) => '<path class="hub-liga" d="' + curva(n) + '"/>').join('') +
     nos.map((n, i) => '<path class="hub-pulso" pathLength="100" style="--d:' + (i * 0.6).toFixed(1) + 's" d="' + curva(n) + '"/>').join('') +
-    '<circle cx="200" cy="60" r="20" style="fill:var(--noite);stroke:var(--linha-forte)"/><g transform="translate(186 46)">' + luaMini(0.25, 28) + '</g>' +
+    '<circle cx="200" cy="60" r="20" style="fill:var(--surface);stroke:var(--line-strong)"/><g transform="translate(186 46)">' + luaMini(0.25, 28) + '</g>' +
     nos.map((n) => '<g class="hub-no"><rect x="' + (n[1] - 46) + '" y="' + (n[2] - 12) + '" width="92" height="24" rx="12"/><text x="' + n[1] + '" y="' + (n[2] + 4) + '">' + n[0] + '</text></g>').join('') +
   '</svg>';
 }
@@ -481,7 +482,7 @@ function pgInicio() {
     '<div class="af-cena"><div class="app-frame" aria-hidden="true" inert>' +
       '<div class="af-barra"><i></i><i></i><i></i><span>clipse / minha jornada</span></div>' +
       '<div class="af-corpo">' +
-        '<div class="af-topo">' + luaMini(crescente.p, 52) + '<div><small>Oi, Ana</small><b>' + crescente.nome + '</b><small>' + crescente.curta + '</small></div></div>' +
+        '<div class="af-topo">' + luaMini(crescente.p, 52, 'sol') + '<div><small>Oi, Ana</small><b>' + crescente.nome + '</b><small>' + crescente.curta + '</small></div></div>' +
         '<div class="af-bloco"><p class="af-rotulo">Como está a energia hoje?</p><div class="af-chips"><span class="af-chip">Baixa</span><span class="af-chip">Ok</span><span class="af-chip on">Alta</span></div>' +
           '<p class="af-rotulo">O que rolou hoje?</p><div class="af-chips"><span class="af-chip on">Treinei</span><span class="af-chip">Caminhei</span><span class="af-chip on">Alonguei</span><span class="af-chip">Descansei</span></div></div>' +
         '<div class="af-bloco"><p class="af-rotulo">Últimos 28 dias</p><ol class="ciclo">' + cicloVitrine() + '</ol></div>' +
@@ -695,7 +696,7 @@ function pgComunidade() {
       const on = estado.logado && estado.salvos.grupos.indexOf(g.id) >= 0;
       return '<li class="grupo' + (on ? ' on' : '') + '"><div class="grupo-txt"><p class="papel">' + g.ativ + ', ritmo ' + g.ritmo.toLowerCase() + '</p><h3>' + g.nome + '</h3><p>' + g.d + '</p>' +
         '<p class="meta">' + esc(g.regiao) + '. ' + g.quando + '.</p><p class="grupo-gente">' + luaMini(0.25, 16) + '<span>' + g.gente + ' pessoas, ' + g.voltando + ' voltando agora</span></p></div>' +
-        '<button type="button" class="btn ' + (on ? 'btn-sec on' : 'btn-pri') + ' btn-p" data-acao="grupo" data-id="' + g.id + '" aria-pressed="' + on + '">' + (on ? 'Sair do grupo' : 'Entrar no grupo') + '</button></li>';
+        '<button type="button" class="btn btn-sec' + (on ? ' on' : '') + ' btn-p" data-acao="grupo" data-id="' + g.id + '" aria-pressed="' + on + '">' + (on ? 'Sair do grupo' : 'Entrar no grupo') + '</button></li>';
     }).join('') + '</ul>' +
   '</section>' +
   notaIlustrativa('Grupos e números ilustrativos. A participação em grupos faz parte do Premium.');
@@ -916,7 +917,7 @@ function pgEntrar() {
     '<label for="en-email">E-mail (opcional)</label><input type="email" id="en-email" name="email" maxlength="80" autocomplete="email">' +
     '<fieldset><legend>Em que fase você está hoje?</legend><div class="escolha-fase">' + ['crescente', 'cheia', 'minguante', 'nova'].map((id, i) =>
       '<input type="radio" name="fase" id="ef-' + id + '" value="' + id + '"' + (i === 0 ? ' checked' : '') + '><label for="ef-' + id + '">' + luaMini(C.fases[id].p, 30) + '<span><strong>' + C.fases[id].nome + '</strong><span>' + C.fases[id].curta + '</span></span></label>').join('') + '</div></fieldset>' +
-    '<div class="acoes"><button class="btn btn-pri">Criar minha jornada</button><button type="button" class="btn btn-sec" data-acao="exemplo">Ver com perfil de exemplo</button></div>' +
+    '<div class="acoes"><button class="btn ' + (u && !estado.logado ? 'btn-sec' : 'btn-pri') + '">Criar minha jornada</button><button type="button" class="btn btn-sec" data-acao="exemplo">Ver com perfil de exemplo</button></div>' +
   '</form></section>';
 }
 
@@ -935,9 +936,10 @@ function pintarCeu(cv) {
   const g = cv.getContext('2d'); g.scale(dpr, dpr);
   let s = 11; const rnd = () => { s = (s * 1664525 + 1013904223) % 4294967296; return s / 4294967296; };
   const n = Math.min(260, Math.round(r.width * r.height / 8000));
+  const cor = getComputedStyle(document.documentElement).getPropertyValue('--ink').trim();
   for (let i = 0; i < n; i++) {
     const x = rnd() * r.width, y = rnd() * r.height, t = rnd();
-    g.globalAlpha = 0.12 + t * 0.5; g.fillStyle = i % 6 === 0 ? '#C6A8FF' : '#F5F0FC';
+    g.globalAlpha = 0.12 + t * 0.5; g.fillStyle = cor;
     g.beginPath(); g.arc(x, y, 0.4 + t * 1.0, 0, 6.3); g.fill();
   }
 }
@@ -999,7 +1001,7 @@ function listaPaginas(comDescricao) {
 }
 function montarCasca() {
   const principais = ['por-que-natural', 'programacao', 'profissionais', 'planos', 'curitiba', 'comunidade'];
-  $('#marca').innerHTML = luaMini(0.25, 22) + '<span>Clipse</span>';
+  $('#marca').innerHTML = LOGO;
   $('#tabbar').innerHTML =
     '<a href="#inicio" data-nav="inicio">' + ic('inicio', 24) + '<span>Início</span></a>' +
     '<a href="#por-que-natural" data-nav="por-que-natural">' + ic('folha', 24) + '<span>Natural</span></a>' +
@@ -1010,7 +1012,7 @@ function montarCasca() {
     '<button type="button" class="nav-mais" data-acao="menu" aria-expanded="false" aria-controls="popover">Mais' + ic('baixo', 16) + '</button>';
   $('#popover').innerHTML = listaPaginas(false);
   $('#rodape').innerHTML = '<div class="rodape-in">' +
-    '<div class="rodape-marca"><a class="marca" href="#inicio">' + luaMini(0.25, 22) + '<span>Clipse</span></a><p>Fitness natural, no seu tempo. Piloto em Curitiba.</p></div>' +
+    '<div class="rodape-marca"><a class="marca" href="#inicio" aria-label="Clipse, página inicial">' + LOGO + '</a><p>Fitness natural, no seu tempo. Piloto em Curitiba.</p></div>' +
     '<nav class="rodape-nav" aria-label="Mapa do site">' + listaPaginas(false) + '</nav>' +
     '<div class="rodape-avisos"><p><strong>Aviso de saúde.</strong> O conteúdo da Clipse é informativo e não substitui o acompanhamento de médico, nutricionista, psicólogo ou profissional de educação física.</p>' +
     '<p>Protótipo acadêmico de um TCC de Design na PUCPR, 2026. Perfis, parceiros, histórias e valores são ilustrativos.</p></div></div>';
@@ -1019,9 +1021,9 @@ function montarCasca() {
 function atualizarConta() {
   const c = $('#conta');
   c.innerHTML = estado.logado
-    ? '<a class="conta-on" href="#minha-jornada" data-nav="minha-jornada" aria-label="Minha jornada, ' + esc(C.fases[estado.fase].nome) + '">' + luaMini(C.fases[estado.fase].p, 22) + '<span>' + esc(primeiroNome()) + '</span></a>'
-    : '<a class="btn btn-pri btn-p" href="#entrar">Entrar</a>';
-  const tj = $('#tab-lua'); if (tj) tj.innerHTML = luaMini(estado.logado ? C.fases[estado.fase].p : 0.25, 24, estado.logado ? '' : 'apagada');
+    ? '<a class="conta-on" href="#minha-jornada" data-nav="minha-jornada" aria-label="Minha jornada, ' + esc(C.fases[estado.fase].nome) + '">' + luaMini(C.fases[estado.fase].p, 22, 'sol') + '<span>' + esc(primeiroNome()) + '</span></a>'
+    : '<a class="btn btn-sec btn-p" href="#entrar">Entrar</a>';
+  const tj = $('#tab-lua'); if (tj) tj.innerHTML = luaMini(estado.logado ? C.fases[estado.fase].p : 0.25, 24, estado.logado ? 'sol' : 'apagada');
 }
 function marcarNav() {
   $$('[data-nav]').forEach((a) => { if (a.dataset.nav === rota) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
@@ -1370,6 +1372,7 @@ window.addEventListener('resize', () => { clearTimeout(tRedim); tRedim = setTime
 
 /* ───────── Partida ───────── */
 function iniciar(guardado) {
+  const tema = $('meta[name="theme-color"]'); if (tema) tema.content = getComputedStyle(document.documentElement).getPropertyValue('--surface').trim();
   estado = normalizar(guardado && guardado.v ? guardado : lerLocal());
   Folha.montar(); montarCasca(); navegar(true); ligarNuvem();
 }
