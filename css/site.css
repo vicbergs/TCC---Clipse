@@ -478,7 +478,7 @@ input:focus-visible + label { outline: 2px solid var(--focus-ring); outline-offs
 
 /* Hero */
 .heroi { min-height: calc(100vh - var(--barra)); min-height: calc(100svh - var(--barra)); padding: 28px 0 36px; border-top: 0; overflow: clip; background: radial-gradient(820px 620px at 76% 46%, color-mix(in srgb, var(--moon-light) 9%, transparent), transparent 64%), radial-gradient(640px 420px at 4% -4%, color-mix(in srgb, var(--ink) 9%, transparent), transparent 62%); }
-.heroi > .ceu { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; -webkit-mask-image: linear-gradient(#000 55%, transparent); mask-image: linear-gradient(#000 55%, transparent); }
+.heroi > .esfera { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 0; }
 .heroi-grade { position: relative; display: grid; gap: 28px; align-items: center; }
 .heroi-texto { display: flex; flex-direction: column; gap: 20px; align-items: flex-start; }
 .heroi-texto .lide { max-width: 50ch; }
@@ -668,11 +668,12 @@ p a:not(.btn):hover, .meta a:hover, .nota-prot a:hover, figcaption a:hover { bac
 [data-theme="lua"] .marca .logo-escuro { display: none; }
 .rodape-marca .marca img { height: 38px; }
 
-.heroi::before { content: ""; position: absolute; inset: 0; background: url(../assets/grafismos/padrao-luas-noite.svg) 72% 58% / cover no-repeat; pointer-events: none; -webkit-mask-image: linear-gradient(to left, #000 30%, transparent 78%); mask-image: linear-gradient(to left, #000 30%, transparent 78%); }
-[data-theme="lua"] .heroi::before { display: none; }
-
+[data-theme="lua"] 
 .sol .lm-luz, .trilho-item[aria-pressed="true"] .lm-luz, .escolha-fase input:checked + label .lm-luz, .opcao-fase.on .lm-luz { fill: var(--accent); }
 .jt-lua .lg-luz { fill: var(--accent); }
 .lm-sombra { stroke: var(--line-strong); }
 .t-label, .papel { letter-spacing: .02em; }
 .btn { font-family: var(--font-sans); }
+/* Texto que reage ao mouse */
+.tr-p { display: inline-block; white-space: nowrap; }
+.tr-c { display: inline-block; will-change: transform; }

@@ -434,7 +434,7 @@ function pgInicio() {
 
   const hero =
   '<section class="tela heroi" aria-labelledby="h-hero">' +
-    '<canvas class="ceu" id="ceu" aria-hidden="true"></canvas>' +
+    '<canvas class="esfera" id="esfera-clipse" aria-hidden="true"></canvas>' +
     '<div class="wrap heroi-grade">' +
       '<div class="heroi-texto">' +
         '<h1 class="display" id="h-hero" data-enter style="--i:0">Fitness natural para quem treina, pausa e volta.</h1>' +
@@ -929,19 +929,62 @@ const PAGINAS = {
 };
 
 /* ───────── Lua do início: arraste para mudar de fase ───────── */
-function pintarCeu(cv) {
-  const r = cv.getBoundingClientRect(); if (!r.width) return;
-  const dpr = Math.min(2, window.devicePixelRatio || 1);
-  cv.width = Math.round(r.width * dpr); cv.height = Math.round(r.height * dpr);
-  const g = cv.getContext('2d'); g.scale(dpr, dpr);
-  let s = 11; const rnd = () => { s = (s * 1664525 + 1013904223) % 4294967296; return s / 4294967296; };
-  const n = Math.min(260, Math.round(r.width * r.height / 8000));
-  const cor = getComputedStyle(document.documentElement).getPropertyValue('--ink').trim();
-  for (let i = 0; i < n; i++) {
-    const x = rnd() * r.width, y = rnd() * r.height, t = rnd();
-    g.globalAlpha = 0.12 + t * 0.5; g.fillStyle = cor;
-    g.beginPath(); g.arc(x, y, 0.4 + t * 1.0, 0, 6.3); g.fill();
+/* ───────── Texto que reage ao mouse: letras engrossam e sobem perto do cursor, palavras acendem ───────── */
+function textoReativo(el, o) {
+  if (!el || reduzMovimento() || !window.matchMedia('(hover: hover)').matches) return null;
+  o = Object.assign({ unidade: 'letra', raio: 130, peso: 0, sobe: 0, brilho: false }, o || {});
+  const txt = el.textContent.trim();
+  el.textContent = '';
+  const itens = [], palavras = txt.split(' ');
+  palavras.forEach((pal, i) => {
+    const grupo = document.createElement('span'); grupo.className = 'tr-p'; grupo.setAttribute('aria-hidden', 'true');
+    (o.unidade === 'letra' ? Array.from(pal) : [pal]).forEach((t) => {
+      const s = document.createElement('span'); s.className = 'tr-c'; s.textContent = t; grupo.appendChild(s);
+      itens.push({ el: s, x: 0, y: 0, w: 0, v: 0 });
+    });
+    el.appendChild(grupo);
+    if (i < palavras.length - 1) el.appendChild(document.createTextNode(' '));
+  });
+  const lido = document.createElement('span'); lido.className = 'oculto'; lido.textContent = txt; el.appendChild(lido);
+  const base = parseFloat(getComputedStyle(el).fontWeight) || 600;
+  let medido = false, alvoX = -1e5, alvoY = -1e5, raf = 0, tAnt = 0, tRedim = 0;
+
+  function medir() {
+    if (o.peso) itens.forEach((l) => { l.el.style.width = ''; });
+    itens.forEach((l) => { const r = l.el.getBoundingClientRect(); l.x = r.left + r.width / 2 + window.scrollX; l.y = r.top + r.height / 2 + window.scrollY - (o.sobe ? -0 : 0); l.w = r.width; });
+    if (o.peso) itens.forEach((l) => { l.el.style.width = l.w + 'px'; });
+    medido = true;
   }
+  function zerar(l) { l.v = 0; l.el.style.fontWeight = ''; l.el.style.transform = ''; l.el.style.color = ''; }
+  function passo(t) {
+    const dt = Math.min(0.05, tAnt ? (t - tAnt) / 1000 : 0.016); tAnt = t;
+    const k = 1 - Math.exp(-dt * 10);
+    let ativo = false;
+    for (const l of itens) {
+      const d = Math.hypot(alvoX - l.x, alvoY - l.y);
+      const alvo = d < o.raio ? Math.pow(1 - d / o.raio, 2) : 0;
+      if (alvo === 0 && l.v < 0.004) { if (l.v !== 0) zerar(l); continue; }
+      l.v += (alvo - l.v) * k; ativo = true;
+      if (o.peso) l.el.style.fontWeight = Math.min(700, Math.round(base + o.peso * l.v));
+      if (o.sobe) l.el.style.transform = 'translateY(' + (-o.sobe * l.v).toFixed(2) + 'px)';
+      if (o.brilho) l.el.style.color = 'color-mix(in srgb, var(--ink) ' + Math.round(l.v * 100) + '%, var(--ink-muted))';
+    }
+    raf = ativo ? requestAnimationFrame(passo) : 0;
+  }
+  const mover = (e) => { if (!medido) medir(); alvoX = e.pageX; alvoY = e.pageY; if (!raf) { tAnt = 0; raf = requestAnimationFrame(passo); } };
+  const sair = () => { alvoX = alvoY = -1e5; if (!raf) { tAnt = 0; raf = requestAnimationFrame(passo); } };
+  const redim = () => { clearTimeout(tRedim); medido = false; tRedim = setTimeout(medir, 200); };
+  document.addEventListener('pointermove', mover, { passive: true });
+  document.documentElement.addEventListener('pointerleave', sair);
+  window.addEventListener('resize', redim);
+  const tInicial = setTimeout(medir, 1300);
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { medido = false; });
+  return { destruir() { cancelAnimationFrame(raf); clearTimeout(tRedim); clearTimeout(tInicial); document.removeEventListener('pointermove', mover); document.documentElement.removeEventListener('pointerleave', sair); window.removeEventListener('resize', redim); } };
+}
+let esferaHeroi = null, textosHeroi = [];
+function limparHeroi() {
+  if (esferaHeroi) { esferaHeroi.destruir(); esferaHeroi = null; }
+  textosHeroi.forEach((x) => { if (x) x.destruir(); }); textosHeroi = [];
 }
 function montarHeroi() {
   const palco = $('#palco'); if (!palco) { heroi = null; return; }
@@ -987,7 +1030,9 @@ function montarHeroi() {
     if (e.key === 'ArrowRight' || e.key === 'ArrowUp') { e.preventDefault(); ir(base + 0.25, 0); }
     else if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') { e.preventDefault(); ir(base - 0.25, 0); }
   });
-  const cv = $('#ceu'); if (cv) pintarCeu(cv);
+  const cv = $('#esfera-clipse');
+  if (cv && window.iniciarEsferaClipse) esferaHeroi = window.iniciarEsferaClipse(cv, { tema: document.documentElement.dataset.theme === 'lua' ? 'lua' : 'noite', ancora: (r) => { const p = palco.getBoundingClientRect(); return { x: p.left - r.left + p.width / 2, y: p.top - r.top + p.height / 2, raio: p.height * 0.62 }; } });
+  textosHeroi = [textoReativo($('#h-hero'), { unidade: 'letra', raio: 130, peso: 100, sobe: 4 }), textoReativo($('.heroi .lide'), { unidade: 'palavra', raio: 120, brilho: true })];
   heroi = { irFase: (id) => { const p = C.fases[id].p; ir(p + Math.round(mola.x - p), 0); } };
 }
 
@@ -1081,6 +1126,7 @@ function tituloDaPagina() {
 }
 
 function aposPintar() {
+  limparHeroi();
   if (rota === 'inicio') { montarHeroi(); pintarLuaGrande('lua-fecho', C.fases.crescente.p); ligarMovimentos(); ligarLoops(); }
   else { heroi = null; desligarMov(); }
   if (rota === 'minha-jornada' && estado.logado) {
@@ -1367,8 +1413,6 @@ document.addEventListener('pointerover', (e) => {
 });
 document.addEventListener('error', (e) => { const t = e.target; if (t && t.tagName === 'IMG' && t.dataset && t.dataset.some) t.remove(); }, true);
 window.addEventListener('hashchange', () => navegar(false));
-let tRedim = 0;
-window.addEventListener('resize', () => { clearTimeout(tRedim); tRedim = setTimeout(() => { const cv = $('#ceu'); if (cv) pintarCeu(cv); }, 180); });
 
 /* ───────── Partida ───────── */
 function iniciar(guardado) {
