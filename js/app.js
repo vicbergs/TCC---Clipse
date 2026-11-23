@@ -79,7 +79,18 @@ const IC = {
   cadeado: '<rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>',
   check: '<path d="M5 12.5l4.5 4.5L19 7.5"/>',
   soma: '<circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/>',
-  marca: '<path d="M7 4h10a1 1 0 0 1 1 1v15l-6-4-6 4V5a1 1 0 0 1 1-1z"/>'
+  marca: '<path d="M7 4h10a1 1 0 0 1 1 1v15l-6-4-6 4V5a1 1 0 0 1 1-1z"/>',
+  'g-intro': '<path d="M5 5.5A1.5 1.5 0 0 1 6.5 4H19v15H6.5A1.5 1.5 0 0 0 5 20.5z"/><path d="M5 20.5v-15M9 8h6M9 12h6"/>',
+  'g-motivos': '<path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/>',
+  'g-riscos': '<path d="M12 3.5l9 16H3z"/><path d="M12 10v4M12 17v.5"/>',
+  'g-rotina': '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+  'g-voltar': '<path d="M4 12a8 8 0 1 0 3-6.2"/><path d="M4 4v4.5h4.5"/>',
+  'g-coracao': '<path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/><path d="M8 11h2l1.5-2 2 4 1-2H16"/>',
+  'g-gota': '<path d="M12 3.5s6 6.2 6 10.5a6 6 0 0 1-12 0c0-4.300 6-10.500 6-10.500z"/>',
+  'g-figado': '<path d="M3.5 11c0-3 3-5 8-5 5 0 9 2 9 5.5 0 3.500-3 6.500-8 6.500-3 0-4.500-1.500-6-2.500C4.500 14.500 3.500 13 3.500 11z"/>',
+  'g-perfil': '<circle cx="12" cy="8" r="4"/><path d="M5 20c0-4 3-6.500 7-6.500s7 2.500 7 6.500"/>',
+  'g-pele': '<path d="M4 8h16M4 12h16M4 16h16"/>',
+  'g-caixa': '<path d="M3.500 8l8.500-4 8.500 4v8l-8.500 4-8.500-4z"/><path d="M3.500 8l8.500 4 8.500-4M12 12v8"/>',
 };
 const ic = (n, t) => '<svg class="ic" width="' + (t || 22) + '" height="' + (t || 22) + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + IC[n] + '</svg>';
 
@@ -593,7 +604,7 @@ function pgNatural() {
   '<section class="bloco"><div class="nat-cab"><span class="rotulo">' + C.aulas.length + ' aulas, de ' + Math.min.apply(null, mins) + ' a ' + Math.max.apply(null, mins) + ' minutos</span><h2>Aulas</h2><p class="sub">Vídeos curtos, gravados por profissionais. Cabem no intervalo do almoço.</p></div>' +
     '<ul class="aulas">' + C.aulas.map(linhaAula).join('') + '</ul>' +
   '</section>' +
-  '<section class="bloco nat-guia"><div class="nat-cab"><span class="rotulo">' + C.guia.length + ' capítulos, ' + minGuia + ' minutos de leitura</span><h2>Guia digital</h2><p class="sub">Cinco capítulos para ler no seu tempo. A versão completa em PDF entra na próxima etapa do projeto.</p></div>' +
+  '<section class="bloco nat-guia"><div class="nat-cab"><span class="rotulo">' + C.guia.length + ' capítulos, ' + minGuia + ' minutos de leitura</span><h2>Guia digital</h2><p class="sub">Cinco capítulos para ler no seu tempo. A versão completa em PDF entra na próxima etapa do projeto.</p><a class="btn btn-sec" href="#guia">Abrir o guia</a></div>' +
     '<div class="acordeao">' + C.guia.map((g, i) => '<details><summary><span class="num">' + (i + 1) + '</span><span class="sum-t">' + g.t + '</span><span class="sum-m">' + g.min + ' min</span>' + ic('baixo', 18) + '</summary><p>' + g.d + '</p></details>').join('') + '</div>' +
   '</section>';
 }
@@ -939,11 +950,89 @@ function pgEntrar() {
   '</form></section>';
 }
 
+/* ───────── Guia digital ───────── */
+function pgGuia() {
+  const caps = C.guia.map((g, i) => Object.assign({ n: i + 1, t: g.t, min: g.min, d: g.d }, C.guiaCaps[i]));
+  const total = caps.reduce((s, c) => s + c.min, 0);
+  const pos = [[14, 33], [50, 16], [86, 33], [76, 85], [24, 85]];
+  const ir = (n, rotulo) => '<button type="button" class="btn btn-sec btn-p" data-acao="guia-ir" data-id="' + n + '">' + rotulo + '</button>';
+  const lado = (c) => '<div class="gd-lado"><span class="gd-n" aria-hidden="true">' + c.n + '</span><span class="gd-ic">' + ic(c.icone, 26) + '</span><div><p class="rotulo">Capítulo ' + c.n + ' de ' + caps.length + '</p><h2>' + c.t + '</h2><p class="meta">' + c.min + ' min de leitura</p></div></div>';
+  const aulaBtn = (id, rotulo) => '<button type="button" class="btn btn-sec btn-p" data-acao="aula" data-id="' + id + '">' + ic('play', 16) + '<span>' + rotulo + '</span></button>';
+
+  /* mapa mental: centro, cinco ramos e os pulsos que correm pelas linhas */
+  const linhas = pos.map((p, i) => { const x = p[0] * 10, y = p[1] * 6.2; const d = 'M500 322Q500 ' + y.toFixed(0) + ' ' + x.toFixed(0) + ' ' + y.toFixed(0); return '<path class="hub-liga" d="' + d + '"/><path class="hub-pulso" pathLength="100" style="--d:' + (i * 0.5).toFixed(1) + 's" d="' + d + '"/>'; }).join('');
+  const no = (c, i) => '<button type="button" class="mm-no" style="left:' + pos[i][0] + '%;top:' + pos[i][1] + '%" data-acao="guia-ir" data-id="' + c.n + '"><span class="mm-ic">' + ic(c.icone, 22) + '</span><span class="mm-txt"><span class="mm-n">Capítulo ' + c.n + ' · ' + c.min + ' min</span><b>' + c.t + '</b><span class="mm-ch">' + c.chaves.join(' · ') + '</span></span></button>';
+  const mapa =
+    '<div class="mapa-mental" data-loop><svg class="mm-linhas" viewBox="0 0 1000 620" preserveAspectRatio="none" aria-hidden="true" focusable="false">' + linhas + '</svg>' +
+      '<div class="mm-centro" style="left:50%;top:52%">' + luaMini(0.5, 52, 'sol') + '<b>Natural</b><span>no seu tempo</span></div>' + caps.map(no).join('') + '</div>' +
+    '<ol class="mm-lista">' + caps.map((c) => '<li><button type="button" class="mm-no" data-acao="guia-ir" data-id="' + c.n + '"><span class="mm-ic">' + ic(c.icone, 22) + '</span><span class="mm-txt"><span class="mm-n">Capítulo ' + c.n + ' · ' + c.min + ' min</span><b>' + c.t + '</b><span class="mm-ch">' + c.chaves.join(' · ') + '</span></span></button></li>').join('') + '</ol>';
+
+  /* capítulo 1 */
+  const cap1 = caps[0];
+  const para = [[0.5, 'Quem treina', 'e quer seguir por perto, no seu ritmo.'], [0, 'Quem pausou', 'e quer voltar sem se comparar com o que fazia antes.'], [0.25, 'Quem está começando', 'e precisa de um primeiro passo que caiba na semana.']];
+  const c1 =
+    '<p class="gd-lide">' + cap1.d + '</p>' +
+    '<div class="gd-bloco"><h3>Para quem a Clipse existe</h3><ul class="gd-tres">' + para.map((p) => '<li>' + luaMini(p[0], 34) + '<b>' + p[1] + '</b><span>' + p[2] + '</span></li>').join('') + '</ul></div>' +
+    '<div class="gd-bloco"><h3>Qual é a sua fase?</h3><p class="meta">Escolha a sua e vá direto ao capítulo indicado.</p><ul class="gd-fases">' +
+      C.ordemFases.map((id) => { const f = C.fases[id], n = C.guiaFases[id]; return '<li><button type="button" class="gd-fase" data-acao="guia-ir" data-id="' + n + '">' + luaMini(f.p, 38) + '<span class="gd-fase-t"><b>' + f.nome + '</b><span>' + f.curta + '</span></span><span class="gd-fase-v">Capítulo ' + n + ic('seta', 16) + '</span></button></li>'; }).join('') + '</ul></div>' +
+    '<div class="gd-bloco"><h3>Como usar este guia</h3><ol class="gd-passos">' +
+      '<li><b>Leia na ordem</b><span>São cinco capítulos curtos, de ' + Math.min.apply(null, caps.map((c) => c.min)) + ' a ' + Math.max.apply(null, caps.map((c) => c.min)) + ' minutos.</span></li>' +
+      '<li><b>Vá direto à sua fase</b><span>Use o quadro acima e abra o capítulo indicado.</span></li>' +
+      '<li><b>Use as aulas de apoio</b><span>Cada capítulo aponta uma aula curta sobre o mesmo tema.</span></li></ol></div>';
+
+  /* capítulo 2 */
+  const c2 =
+    '<p class="gd-lide">' + caps[1].d + '</p>' +
+    '<ol class="gd-cards">' + C.motivos.map((m, i) => '<li><span class="num">' + (i + 1) + '</span><h3>' + m.t + '</h3><p>' + m.d + '</p></li>').join('') + '</ol>' +
+    '<div class="gd-frase"><p>Natural leva tempo. É por isso que dura.</p>' +
+      '<div class="gd-tempo" aria-hidden="true"><span><i></i>Semanas</span><span><i></i>Meses</span><span><i></i>Anos</span></div></div>';
+
+  /* capítulo 3 */
+  const c3 =
+    '<p class="gd-lide">' + caps[2].d + '</p>' +
+    '<div class="gd-alerta"><p class="gd-alerta-t">Para estética ou desempenho, não existe dose considerada segura.</p><p>Desde 2023, o Conselho Federal de Medicina proíbe médicos de prescreverem esteroides anabolizantes com essa finalidade. Tratamento médico, com indicação e acompanhamento, é outra conversa.</p></div>' +
+    '<ul class="gd-riscos">' + C.riscos.map((r, i) => '<li><span class="gd-ic gd-ic-sm">' + ic(C.guiaRiscos[i], 22) + '</span><h3>' + r.t + '</h3><p>' + r.d + '</p></li>').join('') + '</ul>' +
+    '<div class="gd-ajuda"><div><h3>Onde buscar ajuda</h3><p>Se você usa ou já usou e quer parar, procure um endocrinologista. Parar com acompanhamento é mais seguro.</p></div>' + aulaBtn('a3', 'Ver a aula sobre hormônios') + '</div>' +
+    '<p class="fontes">Fontes: Conselho Federal de Medicina, Resolução nº 2.333/2023. Sociedade Brasileira de Endocrinologia e Metabologia, alertas sobre o uso de anabolizantes para fins estéticos.</p>';
+
+  /* capítulo 4 */
+  const dias = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'], marcados = [1, 3, 5];
+  const c4 =
+    '<p class="gd-lide">' + caps[3].d + '</p>' +
+    '<div class="gd-bloco"><h3>Quando só dá para fazer uma coisa, escolha a que for possível hoje</h3><ol class="gd-escada">' +
+      '<li style="--n:1"><b>O mínimo que mantém você por perto</b><span>Quando a semana aperta, mover o corpo um pouco já conta.</span></li>' +
+      '<li style="--n:1.7"><b>Um treino de 20 minutos</b><span>Curto, simples e possível de encaixar.</span></li>' +
+      '<li style="--n:2.4"><b>O treino completo</b><span>Volta quando a semana deixar, sem cobrança.</span></li></ol></div>' +
+    '<div class="gd-bloco"><h3>Exemplo de uma semana cheia</h3><ul class="gd-semana" aria-label="Exemplo ilustrativo de semana com três treinos curtos">' +
+      dias.map((d, i) => '<li class="' + (marcados.indexOf(i) >= 0 ? 'on' : '') + '"><i></i><span>' + d + '</span>' + (marcados.indexOf(i) >= 0 ? '<small>20 min</small>' : '<small></small>') + '</li>').join('') + '</ul><p class="meta">Exemplo ilustrativo. O seu ritmo é o que você consegue sustentar.</p></div>' +
+    '<div class="gd-ajuda"><div><h3>Aula de apoio</h3><p>Rotina puxada: o mínimo que mantém você por perto.</p></div>' + aulaBtn('a5', 'Ver a aula') + '</div>';
+
+  /* capítulo 5 */
+  const c5 =
+    '<p class="gd-lide">' + caps[4].d + '</p>' +
+    '<div class="gd-bloco"><h3>Duas semanas para o corpo lembrar</h3><ol class="gd-roteiro">' +
+      '<li>' + luaMini(0, 40) + '<p class="rotulo">Semana 1</p><b>Metade do que você fazia antes</b><span>Comece pequeno. Só observe como o corpo responde.</span></li>' +
+      '<li>' + luaMini(0.25, 40, 'sol') + '<p class="rotulo">Semana 2</p><b>Um pouco mais, se o corpo pedir</b><span>Sem se comparar com o ritmo de antes.</span></li></ol></div>' +
+    '<ul class="gd-tres gd-ideias"><li><b>A volta pesa mais na cabeça do que no corpo.</b></li><li><b>Fotos antigas são memória, não cobrança.</b></li><li><b>Voltar é um marco, não um recomeço do zero.</b></li></ul>' +
+    '<div class="gd-ajuda"><div><h3>Aula de apoio</h3><p>Voltando depois de uma pausa.</p></div>' + aulaBtn('a4', 'Ver a aula') + '</div>';
+
+  const corpos = [c1, c2, c3, c4, c5];
+  const levar = ['Natural é um caminho, e cada pessoa anda nele no próprio ritmo.', 'O tempo faz parte do resultado.', 'Para estética ou desempenho, não existe dose segura. Parar com acompanhamento é mais seguro.', 'Quando a semana aperta, o mínimo já conta.', 'Voltar depois de uma pausa começa pela metade.'];
+
+  return topo('Guia digital', 'Cinco capítulos para ler na ordem ou para ir direto ao que faz sentido na sua fase. ' + total + ' minutos no total, de graça.') +
+  '<section class="bloco gd-mapa" aria-label="Mapa do guia">' + mapa + '</section>' +
+  '<nav class="gd-nav" aria-label="Capítulos do guia"><div class="gd-nav-in">' + caps.map((c) => '<button type="button" data-acao="guia-ir" data-id="' + c.n + '"><span>' + c.n + '</span>' + c.t + '</button>').join('') + '</div><i class="gd-prog" id="gd-prog" aria-hidden="true"></i></nav>' +
+  '<div class="gd-conteudo">' + caps.map((c, i) => '<section class="gd-cap" id="gd-cap-' + c.n + '" aria-labelledby="gd-h-' + c.n + '">' + lado(c).replace('<h2>', '<h2 id="gd-h-' + c.n + '">') + '<div class="gd-corpo">' + corpos[i] + '</div></section>').join('') + '</div>' +
+  '<section class="bloco gd-levar" aria-labelledby="gd-h-levar"><h2 id="gd-h-levar">Para levar</h2><ul>' + levar.map((l) => '<li>' + ic('check', 18) + '<span>' + l + '</span></li>').join('') + '</ul>' +
+    '<div class="acoes"><a class="btn btn-pri" href="#' + (estado.logado ? 'minha-jornada' : 'entrar') + '">' + (estado.logado ? 'Abrir minha jornada' : 'Começar minha jornada') + '</a><a class="btn btn-sec" href="#por-que-natural">Voltar para Por que natural</a></div>' +
+    '<p class="meta">O conteúdo da Clipse é informativo e não substitui o acompanhamento de médico, nutricionista, psicólogo ou profissional de educação física.</p></section>';
+}
+
 const PAGINAS = {
   'inicio': pgInicio, 'por-que-natural': pgNatural, 'programacao': pgProgramacao, 'profissionais': pgProfissionais,
   'planos': pgPlanos, 'curitiba': pgCuritiba, 'comunidade': pgComunidade, 'minha-jornada': pgJornada,
   'produtos': pgProdutos, 'seja-parceiro': pgParceiro, 'historias': pgHistorias, 'perguntas': pgPerguntas,
-  'sobre': pgSobre, 'entrar': pgEntrar
+  'sobre': pgSobre, 'entrar': pgEntrar, 'guia': pgGuia
 };
 
 /* ───────── Lua do início: arraste para mudar de fase ───────── */
@@ -1092,7 +1181,7 @@ function marcarNav() {
   $$('[data-nav]').forEach((a) => { if (a.dataset.nav === rota) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
   const naBarra = ['inicio', 'por-que-natural', 'minha-jornada', 'comunidade'].indexOf(rota) >= 0 || rota === 'entrar';
   const m = $('#tab-mais'); if (m) m.classList.toggle('on', !naBarra);
-  const nm = $('.nav-mais'); if (nm) nm.classList.toggle('on', ['produtos', 'historias', 'seja-parceiro', 'perguntas', 'sobre'].indexOf(rota) >= 0);
+  const nm = $('.nav-mais'); if (nm) nm.classList.toggle('on', ['produtos', 'historias', 'seja-parceiro', 'perguntas', 'sobre', 'guia'].indexOf(rota) >= 0);
 }
 function fecharPopover() { const p = $('#popover'); if (p && !p.hidden) { p.hidden = true; const b = $('.nav-mais'); if (b) b.setAttribute('aria-expanded', 'false'); } }
 
@@ -1143,10 +1232,28 @@ function tituloDaPagina() {
   document.title = rota === 'inicio' ? 'Clipse: fitness natural para quem treina, pausa e volta' : (p ? p.nome : rota === 'entrar' ? 'Entrar' : 'Clipse') + ' | Clipse';
 }
 
+/* Guia: barra de progresso e capítulo atual na navegação fixa */
+let guiaFim = null;
+function desligarGuia() { if (guiaFim) { guiaFim(); guiaFim = null; } }
+function ligarGuia() {
+  desligarGuia();
+  const caps = $$('.gd-cap'), chips = $$('.gd-nav [data-id]'), barra = $('#gd-prog'), corpo = $('.gd-conteudo');
+  if (!caps.length || !barra || !corpo) return;
+  const atualizar = () => {
+    const r = corpo.getBoundingClientRect(), total = Math.max(1, r.height - window.innerHeight * 0.5);
+    barra.style.transform = 'scaleX(' + Math.max(0, Math.min(1, (-r.top + window.innerHeight * 0.3) / total)).toFixed(3) + ')';
+    let atual = -1; caps.forEach((c, i) => { if (c.getBoundingClientRect().top < window.innerHeight * 0.4) atual = i; });
+    chips.forEach((b, i) => { if (i === atual) b.setAttribute('aria-current', 'true'); else b.removeAttribute('aria-current'); });
+  };
+  let raf = 0; const f = () => { if (!raf) raf = requestAnimationFrame(() => { raf = 0; atualizar(); }); };
+  window.addEventListener('scroll', f, { passive: true }); window.addEventListener('resize', f); atualizar();
+  guiaFim = () => { window.removeEventListener('scroll', f); window.removeEventListener('resize', f); };
+}
 function aposPintar() {
   limparHeroi();
   if (rota === 'inicio') { montarHeroi(); pintarLuaGrande('lua-fecho', C.fases.crescente.p); ligarMovimentos(); ligarLoops(); }
   else { heroi = null; desligarMov(); }
+  if (rota === 'guia') { ligarGuia(); ligarLoops(); } else desligarGuia();
   if (rota === 'minha-jornada' && estado.logado) {
     const alvo = C.fases[estado.fase].p;
     if (animarLuaDe != null && !reduzMovimento()) {
@@ -1285,6 +1392,7 @@ const ACOES = {
     $$('[role="tab"]', c).forEach((b) => { const on = b === el; b.setAttribute('aria-selected', String(on)); b.tabIndex = on ? 0 : -1; });
     $$('[role="tabpanel"]', c).forEach((p) => { p.hidden = p.id !== 'nat-p-' + el.dataset.id; });
   },
+  'guia-ir': (el) => { const s = $('#gd-cap-' + el.dataset.id); if (s) s.scrollIntoView({ behavior: reduzMovimento() ? 'auto' : 'smooth', block: 'start' }); },
   'fechar-folha': () => Folha.fechar(),
   'heroi-fase': (el) => { if (heroi) heroi.irFase(el.dataset.fase); },
   'aula': (el) => abrirAula(el.dataset.id),
