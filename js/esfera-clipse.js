@@ -128,11 +128,10 @@
       ctx.globalCompositeOperation = escuro ? 'lighter' : 'source-over';
       for (let j = 0; j < brilhantes.length; j += 6) {
         const sx = brilhantes[j + 1], sy = brilhantes[j + 2], e = brilhantes[j + 3], p = brilhantes[j + 4], perto = brilhantes[j + 5];
-        const raio = (16 + perto * 46) * (0.85 + 0.15 * p);
+        const raio = (11 + perto * 30) * (0.88 + 0.12 * p);
         ctx.globalAlpha = Math.min(1, (0.55 + perto * 0.5) * e);
         ctx.drawImage(brilho, sx - raio, sy - raio, raio * 2, raio * 2);
-        ctx.globalAlpha = 0.32 * e * p; ctx.strokeStyle = 'rgba(255,236,190,0.8)'; ctx.lineWidth = 0.8;
-        const L = raio * 1.25; ctx.beginPath(); ctx.moveTo(sx - L, sy); ctx.lineTo(sx + L, sy); ctx.moveTo(sx, sy - L * 0.8); ctx.lineTo(sx, sy + L * 0.8); ctx.stroke();
+
       }
       ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
       if (!parado) rafId = requestAnimationFrame(quadro);
