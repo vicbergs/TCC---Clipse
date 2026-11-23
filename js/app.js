@@ -38,15 +38,28 @@ function luaMini(p, tam, classe) {
   return '<svg class="lua-mini ' + (classe || '') + '" width="' + tam + '" height="' + tam + '" viewBox="0 0 24 24" aria-hidden="true">' +
     '<circle class="lm-sombra" cx="12" cy="12" r="10.5"/><path class="lm-luz" d="' + caminhoLua(p, 10.5, 12, 12) + '"/></svg>';
 }
-function luaGrande(id) {
-  return '<svg class="lua-g" id="' + id + '" viewBox="0 0 200 200" aria-hidden="true">' +
-    '<defs><clipPath id="' + id + '-clip"><path id="' + id + '-clip-p" d=""/></clipPath></defs>' +
+function luaGrande(id, real) {
+  const base = '<defs><clipPath id="' + id + '-clip"><path id="' + id + '-clip-p" d=""/></clipPath>';
+  if (!real) {
+    return '<svg class="lua-g" id="' + id + '" viewBox="0 0 200 200" aria-hidden="true">' + base + '</defs>' +
+      '<circle class="lg-sombra" cx="100" cy="100" r="90"/>' +
+      '<path class="lg-luz" id="' + id + '-luz" d=""/>' +
+      '<g class="lg-crateras" clip-path="url(#' + id + '-clip)"><circle cx="70" cy="68" r="16"/><circle cx="130" cy="94" r="9"/><circle cx="92" cy="134" r="22"/><circle cx="142" cy="144" r="7"/><circle cx="120" cy="46" r="6"/></g>' +
+      '</svg>';
+  }
+  /* Lua com volume: degradê que escurece na borda, mares escuros borrados, crateras e grão. As fases seguem o mesmo clip. */
+  return '<svg class="lua-g real" id="' + id + '" viewBox="0 0 200 200" aria-hidden="true">' + base +
+    '<radialGradient id="' + id + '-g" cx="0.38" cy="0.34" r="0.8"><stop offset="0" style="stop-color: color-mix(in srgb, var(--moon-light) 84%, #fff)"/><stop offset="0.6" style="stop-color: var(--moon-light)"/><stop offset="1" style="stop-color: color-mix(in srgb, var(--moon-light) 52%, #000)"/></radialGradient>' +
+    '<radialGradient id="' + id + '-s" cx="0.5" cy="0.5" r="0.5"><stop offset="0" style="stop-color: var(--moon-light); stop-opacity: .07"/><stop offset="1" style="stop-color: var(--moon-light); stop-opacity: .02"/></radialGradient>' +
+    '<filter id="' + id + '-m" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="2.6"/></filter>' +
+    '<filter id="' + id + '-r" x="0" y="0" width="100%" height="100%"><feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="3" seed="7"/><feColorMatrix type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  1.9 0 0 0 -0.78"/></filter></defs>' +
     '<circle class="lg-sombra" cx="100" cy="100" r="90"/>' +
-    '<path class="lg-luz" id="' + id + '-luz" d=""/>' +
-    '<g class="lg-crateras" clip-path="url(#' + id + '-clip)"><circle cx="70" cy="68" r="16"/><circle cx="130" cy="94" r="9"/><circle cx="92" cy="134" r="22"/><circle cx="142" cy="144" r="7"/><circle cx="120" cy="46" r="6"/></g>' +
-    '</svg>';
-}
-function pintarLuaGrande(id, p) {
+    '<circle cx="100" cy="100" r="90" style="fill:url(#' + id + '-s)"/>' +
+    '<path class="lg-luz" id="' + id + '-luz" d="" style="fill:url(#' + id + '-g)"/>' +
+    '<g clip-path="url(#' + id + '-clip)">' +
+      '<g style="fill: var(--eclipse); opacity: .14"><circle cx="70" cy="68" r="16"/><circle cx="130" cy="94" r="9"/><circle cx="92" cy="134" r="22"/><circle cx="142" cy="144" r="7"/><circle cx="120" cy="46" r="6"/></g>' +
+    '</g></svg>';
+}function pintarLuaGrande(id, p) {
   const a = $('#' + id + '-luz'), b = $('#' + id + '-clip-p');
   if (!a || !b) return;
   const d = caminhoLua(p, 90, 100, 100);
@@ -448,7 +461,7 @@ function pgInicio() {
       '</div>' +
       '<div class="heroi-lua" data-enter style="--i:2">' +
         '<div class="palco" id="palco" role="slider" tabindex="0" aria-label="Fase da lua. Arraste para os lados ou use as setas." aria-valuemin="1" aria-valuemax="4" aria-valuenow="3" aria-valuetext="Lua cheia">' +
-          '<div class="halo" aria-hidden="true"></div>' + luaGrande('lua-heroi') +
+          '<div class="halo" aria-hidden="true"></div>' + luaGrande('lua-heroi', true) +
         '</div>' +
         '<div class="trilho" role="group" aria-label="As quatro fases">' +
           C.ordemFases.map((id) => '<button type="button" class="trilho-item" data-acao="heroi-fase" data-fase="' + id + '" aria-pressed="false">' + luaMini(C.fases[id].p, 22) + '<span>' + rotuloFase[id] + '</span></button>').join('') +
