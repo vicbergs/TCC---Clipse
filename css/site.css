@@ -677,3 +677,7 @@ p a:not(.btn):hover, .meta a:hover, .nota-prot a:hover, figcaption a:hover { bac
 /* Texto que reage ao mouse */
 .tr-p { display: inline-block; white-space: nowrap; }
 .tr-c { display: inline-block; will-change: transform; }
+
+/* Herói imerso: fundo quase preto, que volta ao tom da página no fim */
+html:not([data-theme="lua"]) .heroi.profundo { background: radial-gradient(760px 560px at 76% 46%, color-mix(in srgb, var(--moon-light) 6%, transparent), transparent 66%), color-mix(in srgb, var(--surface-sunken) 38%, #000); }
+.heroi.profundo::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 140px; background: linear-gradient(transparent, var(--surface)); pointer-events: none; z-index: 0; }

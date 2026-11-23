@@ -433,7 +433,7 @@ function pgInicio() {
   const crescente = C.fases.crescente;
 
   const hero =
-  '<section class="tela heroi" aria-labelledby="h-hero">' +
+  '<section class="tela heroi profundo" aria-labelledby="h-hero">' +
     '<canvas class="esfera" id="esfera-clipse" aria-hidden="true"></canvas>' +
     '<div class="wrap heroi-grade">' +
       '<div class="heroi-texto">' +
@@ -1031,7 +1031,7 @@ function montarHeroi() {
     else if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') { e.preventDefault(); ir(base - 0.25, 0); }
   });
   const cv = $('#esfera-clipse');
-  if (cv && window.iniciarEsferaClipse) esferaHeroi = window.iniciarEsferaClipse(cv, { tema: document.documentElement.dataset.theme === 'lua' ? 'lua' : 'noite', ancora: (r) => { const p = palco.getBoundingClientRect(); return { x: p.left - r.left + p.width / 2, y: p.top - r.top + p.height / 2, raio: p.height * 0.62 }; } });
+  if (cv && window.iniciarEsferaClipse) esferaHeroi = window.iniciarEsferaClipse(cv, { forma: ['pontos', 'luas', 'logo'].includes(new URLSearchParams(location.search).get('esfera')) ? new URLSearchParams(location.search).get('esfera') : 'estrelas', tema: document.documentElement.dataset.theme === 'lua' ? 'lua' : 'noite', ancora: (r) => { const p = palco.getBoundingClientRect(); return { x: p.left - r.left + p.width / 2, y: p.top - r.top + p.height / 2, raio: p.height * 0.62 }; } });
   textosHeroi = [textoReativo($('#h-hero'), { unidade: 'letra', raio: 130, peso: 100, sobe: 4 }), textoReativo($('.heroi .lide'), { unidade: 'palavra', raio: 120, brilho: true })];
   heroi = { irFase: (id) => { const p = C.fases[id].p; ir(p + Math.round(mola.x - p), 0); } };
 }
