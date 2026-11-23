@@ -6,7 +6,7 @@ const C = window.CLIPSE;
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-const reduzMovimento = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const reduzMovimento = () => document.documentElement.dataset.movimento === 'reduzido' || window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 const telaLarga = () => window.matchMedia('(min-width: 760px)').matches;
 
 /* ───────── Datas ───────── */
@@ -91,6 +91,7 @@ const IC = {
   'g-perfil': '<circle cx="12" cy="8" r="4"/><path d="M5 20c0-4 3-6.500 7-6.500s7 2.500 7 6.500"/>',
   'g-pele': '<path d="M4 8h16M4 12h16M4 16h16"/>',
   'g-caixa': '<path d="M3.500 8l8.500-4 8.500 4v8l-8.500 4-8.500-4z"/><path d="M3.500 8l8.500 4 8.500-4M12 12v8"/>',
+  'acess': '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="8" r="1"/><path d="M7.5 10.5l4.5.8 4.5-.8M12 11.3V16M9.8 19.5l2.2-3.5 2.2 3.5"/>',
 };
 const ic = (n, t) => '<svg class="ic" width="' + (t || 22) + '" height="' + (t || 22) + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + IC[n] + '</svg>';
 
@@ -202,6 +203,40 @@ function perfilExemplo() {
   return e;
 }
 
+/* ───────── Acessibilidade: as escolhas ficam neste navegador ───────── */
+const CHAVE_AC = 'clipse.a11y.v1';
+const AC_PADRAO = { texto: 0, tema: 'noite', contraste: false, movimento: false, espaco: false, fonte: false, links: false };
+let ac = Object.assign({}, AC_PADRAO);
+function lerAcess() { try { const t = localStorage.getItem(CHAVE_AC); if (t) ac = Object.assign({}, AC_PADRAO, JSON.parse(t)); } catch (e) {} }
+function aplicarAcess() {
+  const h = document.documentElement.dataset;
+  if (ac.tema === 'claro') h.theme = 'lua'; else delete h.theme;
+  h.texto = String(Number(ac.texto) || 0);
+  const liga = (k, nome, valor) => { if (ac[k]) h[nome] = valor; else delete h[nome]; };
+  liga('contraste', 'contraste', 'alto'); liga('movimento', 'movimento', 'reduzido'); liga('espaco', 'espaco', '1'); liga('fonte', 'fonte', 'simples'); liga('links', 'links', '1');
+  const tema = $('meta[name="theme-color"]'); if (tema) tema.content = getComputedStyle(document.documentElement).getPropertyValue('--surface').trim();
+}
+function abrirAcess(foco) {
+  const seg = (id, rotulo, ops, atual) => '<div class="ac-grupo"><p class="ac-t" id="ac-l-' + id + '">' + rotulo + '</p><div class="ac-seg" role="group" aria-labelledby="ac-l-' + id + '">' +
+    ops.map((o) => '<button type="button" data-acao="ac-seg" data-grupo="' + id + '" data-id="' + o[0] + '" aria-pressed="' + (String(atual) === String(o[0])) + '">' + o[1] + '</button>').join('') + '</div></div>';
+  const sw = (id, rotulo, desc) => '<button type="button" role="switch" class="ac-sw" data-acao="ac-sw" data-id="' + id + '" aria-checked="' + !!ac[id] + '"><span class="ac-sw-t"><b>' + rotulo + '</b><span>' + desc + '</span></span><span class="ac-trilho" aria-hidden="true"></span></button>';
+  Folha.abrir({ titulo: 'Acessibilidade', html:
+    seg('texto', 'Tamanho do texto', [[0, 'Padrão'], [1, 'Grande'], [2, 'Maior'], [3, 'Máximo']], ac.texto) +
+    seg('tema', 'Tema', [['noite', 'Noite'], ['claro', 'Claro']], ac.tema) +
+    '<div class="ac-lista">' +
+      sw('contraste', 'Alto contraste', 'Texto e bordas mais fortes, sem transparências.') +
+      sw('movimento', 'Reduzir movimento', 'Para animações, estrelas e efeitos de rolagem.') +
+      sw('espaco', 'Mais espaço no texto', 'Aumenta o espaço entre linhas, letras e palavras.') +
+      sw('fonte', 'Fonte simples', 'Troca a fonte da marca por uma mais comum.') +
+      sw('links', 'Sublinhar links', 'Mostra todos os links sublinhados.') + '</div>' +
+    '<div class="acoes"><button type="button" class="btn btn-sec btn-p" data-acao="ac-zerar">Restaurar o padrão</button></div>' +
+    '<p class="meta">As escolhas ficam salvas neste navegador. A Clipse também respeita as configurações do seu aparelho.</p>' });
+  if (foco) { const n = $(foco, $('#folha')); if (n) n.focus({ preventScroll: true }); }
+}
+function mudouAcess(foco) {
+  try { localStorage.setItem(CHAVE_AC, JSON.stringify(ac)); } catch (e) {}
+  aplicarAcess(); pintar(); abrirAcess(foco);
+}
 /* ───────── Aviso curto ───────── */
 let tAviso = 0;
 function avisar(txt) {
@@ -493,7 +528,7 @@ function pgInicio() {
   '</div></div></section>';
 
   const jornada =
-  '<section class="tela tela-claro" aria-labelledby="h-jor"><div class="wrap duas-col">' +
+  '<section class="tela" data-theme="lua" aria-labelledby="h-jor"><div class="wrap duas-col">' +
     '<div class="col-texto"><h2 id="h-jor">Minha jornada, em fases e sem cobrança</h2>' +
       '<p class="lide">Escolha a sua fase, faça um check-in de cinco minutos e veja os últimos 28 dias como a lua os veria. Dia sem registro fica em branco.</p>' +
       '<ul class="ticks">' +
@@ -503,7 +538,7 @@ function pgInicio() {
       '</ul>' +
       '<div class="acoes"><a class="btn btn-pri" href="' + hrefJor + '">' + acaoJor + '</a>' + (logado ? '' : '<button type="button" class="btn btn-sec" data-acao="exemplo">Ver com perfil de exemplo</button>') + '</div>' +
     '</div>' +
-    '<div class="af-cena"><div class="app-frame" aria-hidden="true" inert>' +
+    '<div class="af-cena"><div class="app-frame" data-theme="noite" aria-hidden="true" inert>' +
       '<div class="af-barra"><i></i><i></i><i></i><span>clipse / minha jornada</span></div>' +
       '<div class="af-corpo">' +
         '<div class="af-topo">' + luaMini(crescente.p, 52, 'sol') + '<div><small>Oi, Ana</small><b>' + crescente.nome + '</b><small>' + crescente.curta + '</small></div></div>' +
@@ -536,7 +571,7 @@ function pgInicio() {
   '</div></div></section>';
 
   const curitiba =
-  '<section class="tela" aria-labelledby="h-cur"><div class="wrap duas-col">' +
+  '<section class="tela" data-theme="lua" aria-labelledby="h-cur"><div class="wrap duas-col">' +
     '<div class="col-texto"><h2 id="h-cur">O piloto é em Curitiba</h2>' +
       '<p class="lide">Encontros gratuitos em parques, academias e clínicas alinhadas ao natural, e grupos para treinar perto de casa.</p>' +
       '<ul class="numeros"><li><strong>' + C.locais.length + '</strong><span>locais no mapa</span></li><li><strong>' + C.grupos.length + '</strong><span>grupos de treino</span></li><li><strong>' + gratis + '</strong><span>encontros gratuitos</span></li></ul>' +
@@ -553,7 +588,7 @@ function pgInicio() {
   '</div></section>';
 
   const planos =
-  '<section class="tela tela-claro" aria-labelledby="h-pl"><div class="wrap">' +
+  '<section class="tela" data-theme="lua" aria-labelledby="h-pl"><div class="wrap">' +
     '<div class="cab-tela"><h2 id="h-pl">Três planos, um deles grátis</h2><p class="lide">Dá para começar de graça e mudar quando fizer sentido. Sem fidelidade.</p></div>' +
     '<div class="planos-m">' + C.planos.map((p) => '<a class="plano-m' + (p.id === 'premium' ? ' pre' : '') + '" href="#planos"><h3>' + p.nome + '</h3><p class="plano-valor"><strong>' + p.valor + '</strong>' + (p.periodo ? '<span>' + p.periodo + '</span>' : '') + '</p><p class="meta">' + p.linha + '</p><ul class="plano-itens">' +
       p.itens.slice(0, 4).map((i) => '<li>' + ic('check', 16) + '<span>' + i + '</span></li>').join('') + '</ul></a>').join('') + '</div>' +
@@ -590,7 +625,7 @@ function pgNatural() {
         '<button type="button" role="tab" id="nat-t-medico" aria-selected="false" tabindex="-1" aria-controls="nat-p-medico" data-acao="nat-aba" data-id="medico">Tratamento médico</button></div>' +
       '<div class="nat-paineis"><p role="tabpanel" id="nat-p-entra" aria-labelledby="nat-t-entra">Vale para quem compete no fisiculturismo natural e para quem só quer treinar, correr ou fazer yoga e se sentir bem.</p>' +
       '<p role="tabpanel" id="nat-p-medico" aria-labelledby="nat-t-medico" hidden>É outra conversa. Quem usa hormônio ou medicamento com indicação e acompanhamento segue o que o médico orientou.</p></div></aside></div>' +
-  '<section class="bloco"><div class="nat-cab"><span class="rotulo">' + C.motivos.length + ' motivos</span><h2>Motivos para ficar no natural</h2></div>' +
+  '<section class="bloco tom-claro" data-theme="lua"><div class="nat-cab"><span class="rotulo">' + C.motivos.length + ' motivos</span><h2>Motivos para ficar no natural</h2></div>' +
     '<ol class="nat-cards">' + C.motivos.map((m, i) => '<li><span class="num">' + (i + 1) + '</span><h3>' + m.t + '</h3><p>' + m.d + '</p></li>').join('') +
       '<li class="nat-cta"><h3>Comece pela aula mais curta</h3><p>' + primeira.t + ', com ' + esc(primeira.por) + '. ' + primeira.min + ' minutos.</p><button type="button" class="btn btn-pri btn-p" data-acao="aula" data-id="' + primeira.id + '">' + ic('play', 16) + '<span>Ver a aula</span></button></li></ol>' +
   '</section>' +
@@ -601,7 +636,7 @@ function pgNatural() {
       '<p class="fontes">Fontes: Conselho Federal de Medicina, Resolução nº 2.333/2023. Sociedade Brasileira de Endocrinologia e Metabologia, alertas sobre o uso de anabolizantes para fins estéticos.</p></div>' +
     '<dl class="riscos">' + C.riscos.map((r) => '<div><dt>' + r.t + '</dt><dd>' + r.d + '</dd></div>').join('') + '</dl></div>' +
   '</section>' +
-  '<section class="bloco"><div class="nat-cab"><span class="rotulo">' + C.aulas.length + ' aulas, de ' + Math.min.apply(null, mins) + ' a ' + Math.max.apply(null, mins) + ' minutos</span><h2>Aulas</h2><p class="sub">Vídeos curtos, gravados por profissionais. Cabem no intervalo do almoço.</p></div>' +
+  '<section class="bloco tom-claro" data-theme="lua"><div class="nat-cab"><span class="rotulo">' + C.aulas.length + ' aulas, de ' + Math.min.apply(null, mins) + ' a ' + Math.max.apply(null, mins) + ' minutos</span><h2>Aulas</h2><p class="sub">Vídeos curtos, gravados por profissionais. Cabem no intervalo do almoço.</p></div>' +
     '<ul class="aulas">' + C.aulas.map(linhaAula).join('') + '</ul>' +
   '</section>' +
   '<section class="bloco nat-guia"><div class="nat-cab"><span class="rotulo">' + C.guia.length + ' capítulos, ' + minGuia + ' minutos de leitura</span><h2>Guia digital</h2><p class="sub">Cinco capítulos para ler no seu tempo. A versão completa em PDF entra na próxima etapa do projeto.</p><a class="btn btn-sec" href="#guia">Abrir o guia</a></div>' +
@@ -637,7 +672,7 @@ function pgProfissionais() {
   const lista = C.profissionais.filter((p) => filtroProf === 'Todos' || p.area === filtroProf);
   return topo('Profissionais', 'Nutricionistas, personal trainers e psicólogos que trabalham sem atalho e respeitam a sua fase.') +
   '<div class="filtros" role="group" aria-label="Filtrar por área">' + areas.map((a) => '<button type="button" class="filtro" data-acao="filtro-prof" data-id="' + a + '" aria-pressed="' + (filtroProf === a) + '">' + a + '</button>').join('') + '</div>' +
-  '<ul class="gente">' + lista.map((p) =>
+  '<h2 class="oculto">Pessoas do time</h2><ul class="gente">' + lista.map((p) =>
     '<li class="pessoa"><div class="avatar av-' + p.area.toLowerCase().normalize('NFD').replace(/[^a-z]/g, '') + '" aria-hidden="true">' + iniciais(p.nome) + '</div>' +
     '<div class="pessoa-txt"><h3>' + p.nome + '</h3><p class="papel">' + p.papel + '</p><p>' + p.foco + '</p><p class="meta">' + p.onde + '</p>' +
     '<div class="acoes"><button type="button" class="btn btn-sec btn-p" data-acao="prof" data-id="' + p.id + '">Ver perfil</button>' + botaoSalvar('profissionais', p.id) + '</div></div></li>').join('') + '</ul>' +
@@ -867,7 +902,7 @@ function pgProdutos() {
       (gerindo ? '<button type="button" class="btn btn-pri btn-p" data-acao="produto-novo">' + ic('soma', 16) + '<span>Adicionar produto</span></button>' : '') +
       '<button type="button" class="btn btn-sec btn-p" data-acao="gerir" aria-pressed="' + gerindo + '">' + (gerindo ? 'Concluir' : 'Gerenciar vitrine') + '</button></div></div>'
       : (nota ? '<p class="meta">' + nota + '</p>' : '')) +
-    '<section class="bloco">' + corpo + '</section>' +
+    '<section class="bloco"><h2 class="oculto">Produtos da vitrine</h2>' + corpo + '</section>' +
     notaIlustrativa('Produtos e valores ilustrativos.');
 }
 
@@ -1022,7 +1057,7 @@ function pgGuia() {
   return topo('Guia digital', 'Cinco capítulos para ler na ordem ou para ir direto ao que faz sentido na sua fase. ' + total + ' minutos no total, de graça.') +
   '<section class="bloco gd-mapa" aria-label="Mapa do guia">' + mapa + '</section>' +
   '<nav class="gd-nav" aria-label="Capítulos do guia"><div class="gd-nav-in">' + caps.map((c) => '<button type="button" data-acao="guia-ir" data-id="' + c.n + '"><span>' + c.n + '</span>' + c.t + '</button>').join('') + '</div><i class="gd-prog" id="gd-prog" aria-hidden="true"></i></nav>' +
-  '<div class="gd-conteudo">' + caps.map((c, i) => '<section class="gd-cap" id="gd-cap-' + c.n + '" aria-labelledby="gd-h-' + c.n + '">' + lado(c).replace('<h2>', '<h2 id="gd-h-' + c.n + '">') + '<div class="gd-corpo">' + corpos[i] + '</div></section>').join('') + '</div>' +
+  '<div class="gd-conteudo">' + caps.map((c, i) => '<section class="gd-cap' + (c.n % 2 === 0 ? ' tom-claro" data-theme="lua' : '') + '" id="gd-cap-' + c.n + '" aria-labelledby="gd-h-' + c.n + '">' + lado(c).replace('<h2>', '<h2 id="gd-h-' + c.n + '">') + '<div class="gd-corpo">' + corpos[i] + '</div></section>').join('') + '</div>' +
   '<section class="bloco gd-levar" aria-labelledby="gd-h-levar"><h2 id="gd-h-levar">Para levar</h2><ul>' + levar.map((l) => '<li>' + ic('check', 18) + '<span>' + l + '</span></li>').join('') + '</ul>' +
     '<div class="acoes"><a class="btn btn-pri" href="#' + (estado.logado ? 'minha-jornada' : 'entrar') + '">' + (estado.logado ? 'Abrir minha jornada' : 'Começar minha jornada') + '</a><a class="btn btn-sec" href="#por-que-natural">Voltar para Por que natural</a></div>' +
     '<p class="meta">O conteúdo da Clipse é informativo e não substitui o acompanhamento de médico, nutricionista, psicólogo ou profissional de educação física.</p></section>';
@@ -1167,14 +1202,14 @@ function montarCasca() {
     '<div class="rodape-marca"><a class="marca" href="#inicio" aria-label="Clipse, página inicial">' + LOGO + '</a><p>Fitness natural, no seu tempo. Piloto em Curitiba.</p></div>' +
     '<nav class="rodape-nav" aria-label="Mapa do site">' + listaPaginas(false) + '</nav>' +
     '<div class="rodape-avisos"><p><strong>Aviso de saúde.</strong> O conteúdo da Clipse é informativo e não substitui o acompanhamento de médico, nutricionista, psicólogo ou profissional de educação física.</p>' +
-    '<p>Protótipo acadêmico de um TCC de Design na PUCPR, 2026. Perfis, parceiros, histórias e valores são ilustrativos.</p></div></div>';
+    '<p>Protótipo acadêmico de um TCC de Design na PUCPR, 2026. Perfis, parceiros, histórias e valores são ilustrativos.</p><p><button type="button" class="link" data-acao="acessibilidade">Opções de acessibilidade</button></p></div></div>';
   atualizarConta();
 }
 function atualizarConta() {
   const c = $('#conta');
-  c.innerHTML = estado.logado
+  c.innerHTML = '<button type="button" class="btn-ac" data-acao="acessibilidade" aria-haspopup="dialog" aria-label="Opções de acessibilidade">' + ic('acess', 22) + '</button>' + (estado.logado
     ? '<a class="conta-on" href="#minha-jornada" data-nav="minha-jornada" aria-label="Minha jornada, ' + esc(C.fases[estado.fase].nome) + '">' + luaMini(C.fases[estado.fase].p, 22, 'sol') + '<span>' + esc(primeiroNome()) + '</span></a>'
-    : '<a class="btn btn-sec btn-p" href="#entrar">Entrar</a>';
+    : '<a class="btn btn-sec btn-p" href="#entrar">Entrar</a>');
   const tj = $('#tab-lua'); if (tj) tj.innerHTML = luaMini(estado.logado ? C.fases[estado.fase].p : 0.25, 24, estado.logado ? 'sol' : 'apagada');
 }
 function marcarNav() {
@@ -1393,6 +1428,10 @@ const ACOES = {
     $$('[role="tabpanel"]', c).forEach((p) => { p.hidden = p.id !== 'nat-p-' + el.dataset.id; });
   },
   'guia-ir': (el) => { const s = $('#gd-cap-' + el.dataset.id); if (s) s.scrollIntoView({ behavior: reduzMovimento() ? 'auto' : 'smooth', block: 'start' }); },
+  'acessibilidade': () => abrirAcess(),
+  'ac-seg': (el) => { const g = el.dataset.grupo; ac[g] = g === 'texto' ? Number(el.dataset.id) : el.dataset.id; mudouAcess('[data-acao="ac-seg"][data-grupo="' + g + '"][data-id="' + el.dataset.id + '"]'); },
+  'ac-sw': (el) => { ac[el.dataset.id] = !ac[el.dataset.id]; mudouAcess('[data-acao="ac-sw"][data-id="' + el.dataset.id + '"]'); },
+  'ac-zerar': () => { ac = Object.assign({}, AC_PADRAO); mudouAcess('[data-acao="ac-zerar"]'); },
   'fechar-folha': () => Folha.fechar(),
   'heroi-fase': (el) => { if (heroi) heroi.irFase(el.dataset.fase); },
   'aula': (el) => abrirAula(el.dataset.id),
@@ -1548,6 +1587,7 @@ window.addEventListener('hashchange', () => navegar(false));
 
 /* ───────── Partida ───────── */
 function iniciar(guardado) {
+  lerAcess(); aplicarAcess();
   const tema = $('meta[name="theme-color"]'); if (tema) tema.content = getComputedStyle(document.documentElement).getPropertyValue('--surface').trim();
   estado = normalizar(guardado && guardado.v ? guardado : lerLocal());
   Folha.montar(); montarCasca(); navegar(true); ligarNuvem();

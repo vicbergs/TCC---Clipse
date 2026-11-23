@@ -10,7 +10,7 @@
 (function (global) {
   'use strict';
 
-  const reduzMovimento = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const reduzMovimento = () => document.documentElement.dataset.movimento === 'reduzido' || window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   const TEMAS = {
     noite: { poeira: [242, 237, 227], sol: [232, 169, 58] },

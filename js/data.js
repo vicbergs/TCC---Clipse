@@ -112,8 +112,8 @@ window.CLIPSE = {
       itens: ['Guia digital completo', 'Aulas introdutórias', 'Mapa de Curitiba e encontros abertos', 'Minha jornada com fase, check-in e objetivos'] },
     { id: 'premium', nome: 'Premium', linha: 'Para manter o ritmo com companhia.', valor: 'R$ 29,90', periodo: 'por mês',
       itens: ['Tudo do Gratuito', 'Todas as aulas e a programação completa', 'Comunidade e grupos', 'Jornada completa: ciclo, diário e voltas', 'Descontos nos parceiros', 'Aula geral mensal com psicólogo'] },
-    { id: 'diamond', nome: 'Diamond', linha: 'Para quem quer acompanhamento de perto.', valor: 'R$ 189', periodo: 'por mês',
-      itens: ['Tudo do Premium', 'Nutricionista: plano alimentar e revisão mensal', 'Personal trainer: treino montado para a sua fase', 'Canal direto com os dois profissionais', 'Prioridade nos encontros com vagas'] }
+    { id: 'diamond', nome: 'Diamond', linha: 'Para quem quer acompanhamento de perto.', valor: 'R$ 349', periodo: 'por mês',
+      itens: ['Tudo do Premium', 'Nutricionista: plano alimentar e revisão mensal', 'Personal trainer: treino montado para a sua fase', 'Canal direto com os dois profissionais', 'Prioridade nos encontros com vagas', 'Pagamento por Pix, cartão ou boleto', 'Plano anual por R$ 3.490, com 2 meses de desconto'] }
   ],
 
   comparativo: [
