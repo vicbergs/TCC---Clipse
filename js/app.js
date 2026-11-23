@@ -569,29 +569,34 @@ function linhaAula(a) {
   '</button></li>';
 }
 function pgNatural() {
-  return topo('Por que natural', 'Na Clipse, natural é cuidar do corpo sem hormônios, anabolizantes ou canetas emagrecedoras usados só por estética ou desempenho.') +
-  '<section class="bloco prosa">' +
-    '<p>Vale para quem compete no fisiculturismo natural e para quem só quer treinar, correr ou fazer yoga e se sentir bem.</p>' +
-    '<p>Tratamento médico é outra conversa. Quem usa hormônio ou medicamento com indicação e acompanhamento segue o que o médico orientou.</p>' +
+  const minGuia = C.guia.reduce((s, g) => s + g.min, 0), mins = C.aulas.map((a) => a.min);
+  const primeira = C.aulas[0];
+  return '<div class="nat-hero"><div>' + topo('Por que natural', 'Na Clipse, natural é cuidar do corpo sem hormônios, anabolizantes ou canetas emagrecedoras usados só por estética ou desempenho.') + '</div>' +
+    '<aside class="nat-def" data-aba="entra"><div class="nat-palco" aria-hidden="true"><div class="nat-lua"></div><div class="nat-cobre"></div></div>' +
+      '<p class="nat-frase">Natural é um caminho, e cada pessoa anda nele no próprio ritmo.</p>' +
+      '<div class="nat-abas" role="tablist" aria-label="O que a Clipse entende por natural">' +
+        '<button type="button" role="tab" id="nat-t-entra" aria-selected="true" aria-controls="nat-p-entra" data-acao="nat-aba" data-id="entra">Quem entra</button>' +
+        '<button type="button" role="tab" id="nat-t-medico" aria-selected="false" tabindex="-1" aria-controls="nat-p-medico" data-acao="nat-aba" data-id="medico">Tratamento médico</button></div>' +
+      '<div class="nat-paineis"><p role="tabpanel" id="nat-p-entra" aria-labelledby="nat-t-entra">Vale para quem compete no fisiculturismo natural e para quem só quer treinar, correr ou fazer yoga e se sentir bem.</p>' +
+      '<p role="tabpanel" id="nat-p-medico" aria-labelledby="nat-t-medico" hidden>É outra conversa. Quem usa hormônio ou medicamento com indicação e acompanhamento segue o que o médico orientou.</p></div></aside></div>' +
+  '<section class="bloco"><div class="nat-cab"><span class="rotulo">' + C.motivos.length + ' motivos</span><h2>Motivos para ficar no natural</h2></div>' +
+    '<ol class="nat-cards">' + C.motivos.map((m, i) => '<li><span class="num">' + (i + 1) + '</span><h3>' + m.t + '</h3><p>' + m.d + '</p></li>').join('') +
+      '<li class="nat-cta"><h3>Comece pela aula mais curta</h3><p>' + primeira.t + ', com ' + esc(primeira.por) + '. ' + primeira.min + ' minutos.</p><button type="button" class="btn btn-pri btn-p" data-acao="aula" data-id="' + primeira.id + '">' + ic('play', 16) + '<span>Ver a aula</span></button></li></ol>' +
   '</section>' +
-  '<section class="bloco"><h2>Motivos para ficar no natural</h2>' +
-    '<ul class="lista-ideias">' + C.motivos.map((m) => '<li><h3>' + m.t + '</h3><p>' + m.d + '</p></li>').join('') + '</ul>' +
+  '<section class="bloco painel-risco"><div class="risco-grade"><div class="risco-lado"><h2>O que o antes e depois não mostra</h2>' +
+      '<p class="sub">Efeitos associados ao uso de esteroides anabolizantes por estética ou desempenho, sem indicação médica.</p>' +
+      '<p class="destaque">Para estética ou desempenho, não existe dose considerada segura. Desde 2023, o Conselho Federal de Medicina proíbe médicos de prescreverem esteroides anabolizantes com essa finalidade.</p>' +
+      '<p>Se você usa ou já usou e quer parar, procure um endocrinologista. Parar com acompanhamento é mais seguro.</p>' +
+      '<p class="fontes">Fontes: Conselho Federal de Medicina, Resolução nº 2.333/2023. Sociedade Brasileira de Endocrinologia e Metabologia, alertas sobre o uso de anabolizantes para fins estéticos.</p></div>' +
+    '<dl class="riscos">' + C.riscos.map((r) => '<div><dt>' + r.t + '</dt><dd>' + r.d + '</dd></div>').join('') + '</dl></div>' +
   '</section>' +
-  '<section class="bloco painel-risco"><h2>O que o antes e depois não mostra</h2>' +
-    '<p class="sub">Efeitos associados ao uso de esteroides anabolizantes por estética ou desempenho, sem indicação médica.</p>' +
-    '<dl class="riscos">' + C.riscos.map((r) => '<div><dt>' + r.t + '</dt><dd>' + r.d + '</dd></div>').join('') + '</dl>' +
-    '<p class="destaque">Para estética ou desempenho, não existe dose considerada segura. Desde 2023, o Conselho Federal de Medicina proíbe médicos de prescreverem esteroides anabolizantes com essa finalidade.</p>' +
-    '<p>Se você usa ou já usou e quer parar, procure um endocrinologista. Parar com acompanhamento é mais seguro.</p>' +
-    '<p class="fontes">Fontes: Conselho Federal de Medicina, Resolução nº 2.333/2023. Sociedade Brasileira de Endocrinologia e Metabologia, alertas sobre o uso de anabolizantes para fins estéticos.</p>' +
-  '</section>' +
-  '<section class="bloco"><h2>Aulas</h2><p class="sub">Vídeos curtos, gravados por profissionais. Cabem no intervalo do almoço.</p>' +
+  '<section class="bloco"><div class="nat-cab"><span class="rotulo">' + C.aulas.length + ' aulas, de ' + Math.min.apply(null, mins) + ' a ' + Math.max.apply(null, mins) + ' minutos</span><h2>Aulas</h2><p class="sub">Vídeos curtos, gravados por profissionais. Cabem no intervalo do almoço.</p></div>' +
     '<ul class="aulas">' + C.aulas.map(linhaAula).join('') + '</ul>' +
   '</section>' +
-  '<section class="bloco"><h2>Guia digital</h2><p class="sub">Cinco capítulos para ler no seu tempo. A versão completa em PDF entra na próxima etapa do projeto.</p>' +
+  '<section class="bloco nat-guia"><div class="nat-cab"><span class="rotulo">' + C.guia.length + ' capítulos, ' + minGuia + ' minutos de leitura</span><h2>Guia digital</h2><p class="sub">Cinco capítulos para ler no seu tempo. A versão completa em PDF entra na próxima etapa do projeto.</p></div>' +
     '<div class="acordeao">' + C.guia.map((g, i) => '<details><summary><span class="num">' + (i + 1) + '</span><span class="sum-t">' + g.t + '</span><span class="sum-m">' + g.min + ' min</span>' + ic('baixo', 18) + '</summary><p>' + g.d + '</p></details>').join('') + '</div>' +
   '</section>';
 }
-
 function linhaEvento(e, quando) {
   const on = estado.logado && estado.salvos.eventos.indexOf(e.id) >= 0;
   return '<li class="evento">' +
@@ -1273,6 +1278,12 @@ const ACOES = {
   'menu': (el) => {
     if (telaLarga()) { const p = $('#popover'), abrir = p.hidden; p.hidden = !abrir; el.setAttribute('aria-expanded', String(abrir)); if (abrir) marcarNav(); }
     else Folha.abrir({ titulo: 'Todas as páginas', html: '<nav class="menu-folha" aria-label="Todas as páginas">' + listaPaginas(true) + '</nav>', aoMontar: marcarNav });
+  },
+  'nat-aba': (el) => {
+    const c = el.closest('.nat-def'); if (!c) return;
+    c.dataset.aba = el.dataset.id;
+    $$('[role="tab"]', c).forEach((b) => { const on = b === el; b.setAttribute('aria-selected', String(on)); b.tabIndex = on ? 0 : -1; });
+    $$('[role="tabpanel"]', c).forEach((p) => { p.hidden = p.id !== 'nat-p-' + el.dataset.id; });
   },
   'fechar-folha': () => Folha.fechar(),
   'heroi-fase': (el) => { if (heroi) heroi.irFase(el.dataset.fase); },
