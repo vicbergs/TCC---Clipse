@@ -625,14 +625,14 @@ function linhaAula(a) {
 function pgNatural() {
   const minGuia = C.guia.reduce((s, g) => s + g.min, 0), mins = C.aulas.map((a) => a.min);
   const primeira = C.aulas[0];
-  return '<div class="nat-hero"><div>' + topo('Por que natural', 'Na Clipse, natural é cuidar do corpo sem hormônios, anabolizantes ou canetas emagrecedoras usados só por estética ou desempenho.') + '</div>' +
+  return heroFoto('natural', '<div class="nat-hero"><div>' + topo('Por que natural', 'Na Clipse, natural é cuidar do corpo sem hormônios, anabolizantes ou canetas emagrecedoras usados só por estética ou desempenho.') + '</div>' +
     '<aside class="nat-def" data-aba="entra"><div class="nat-palco" aria-hidden="true"><div class="nat-lua"></div><div class="nat-cobre"></div></div>' +
       '<p class="nat-frase">Natural é um caminho, e cada pessoa anda nele no próprio ritmo.</p>' +
       '<div class="nat-abas" role="tablist" aria-label="O que a Clipse entende por natural">' +
         '<button type="button" role="tab" id="nat-t-entra" aria-selected="true" aria-controls="nat-p-entra" data-acao="nat-aba" data-id="entra">Quem entra</button>' +
         '<button type="button" role="tab" id="nat-t-medico" aria-selected="false" tabindex="-1" aria-controls="nat-p-medico" data-acao="nat-aba" data-id="medico">Tratamento médico</button></div>' +
       '<div class="nat-paineis"><p role="tabpanel" id="nat-p-entra" aria-labelledby="nat-t-entra">Vale para quem compete no fisiculturismo natural e para quem só quer treinar, correr ou fazer yoga e se sentir bem.</p>' +
-      '<p role="tabpanel" id="nat-p-medico" aria-labelledby="nat-t-medico" hidden>É outra conversa. Quem usa hormônio ou medicamento com indicação e acompanhamento segue o que o médico orientou.</p></div></aside></div>' + bannerFoto('natural') +
+      '<p role="tabpanel" id="nat-p-medico" aria-labelledby="nat-t-medico" hidden>É outra conversa. Quem usa hormônio ou medicamento com indicação e acompanhamento segue o que o médico orientou.</p></div></aside></div>') +
   '<section class="bloco tom-claro" data-theme="lua"><div class="nat-cab"><span class="rotulo">' + C.motivos.length + ' motivos</span><h2>Motivos para ficar no natural</h2></div>' +
     '<ol class="nat-cards">' + C.motivos.map((m, i) => '<li><span class="num">' + (i + 1) + '</span><h3>' + m.t + '</h3><p>' + m.d + '</p></li>').join('') +
       '<li class="nat-cta"><h3>Comece pela aula mais curta</h3><p>' + primeira.t + ', com ' + esc(primeira.por) + '. ' + primeira.min + ' minutos.</p><button type="button" class="btn btn-pri btn-p" data-acao="aula" data-id="' + primeira.id + '">' + ic('play', 16) + '<span>Ver a aula</span></button></li></ol>' +
@@ -661,7 +661,7 @@ function linhaEvento(e, quando) {
     '</div></li>';
 }
 function pgProgramacao() {
-  return topo('Programação', 'A semana da Clipse tem um ritmo fixo. Você participa do que couber na sua.') + bannerFoto('programacao') +
+  return heroFoto('programacao', topo('Programação', 'A semana da Clipse tem um ritmo fixo. Você participa do que couber na sua.')) +
   '<section class="bloco"><h2>Toda semana</h2>' +
     '<ul class="eventos">' + C.semana.map((e) => linhaEvento(e, '<strong>' + e.dia + '</strong><span>' + e.hora + '</span>')).join('') + '</ul>' +
   '</section>' +
@@ -677,6 +677,11 @@ function pgProgramacao() {
 const fotoImg = (arq, cls) => '<img' + (cls ? ' class="' + cls + '"' : '') + ' src="assets/fotos/' + arq + '" alt="' + esc((C.fotoAlt || {})[arq] || '') + '" loading="lazy" decoding="async" data-some="1">';
 const quadro = (arq, cls) => arq ? '<figure class="foto-moldura ' + (cls || '') + '">' + fotoImg(arq) + '</figure>' : '';
 const bannerFoto = (chave) => quadro(C.fotos && C.fotos.banner[chave], 'banner-foto');
+const heroFoto = (chave, conteudo) => {
+  const a = C.fotos && C.fotos.banner[chave];
+  if (!a) return conteudo;
+  return '<section class="hero-foto"><div class="hf-img" aria-hidden="true"><img src="assets/fotos/' + a + '" alt="" decoding="async" data-some="1"></div><div class="hf-veu" aria-hidden="true"></div>' + conteudo + '</section>';
+};
 const fotoProf = (id) => (C.fotos && C.fotos.prof[id]) ? '<img src="assets/fotos/' + C.fotos.prof[id] + '" alt="" width="96" height="96" loading="lazy" data-some="1">' : '';
 function iniciais(nome) { return nome.split(' ').map((p) => p[0]).slice(0, 2).join(''); }
 function pgProfissionais() {
@@ -746,7 +751,7 @@ function detalheLocal() {
 }
 function pgCuritiba() {
   const cats = [['todos', 'Todos']].concat(Object.keys(C.categoriasLocal).map((k) => [k, C.categoriasLocal[k]]));
-  return topo('Curitiba', 'O piloto da Clipse acontece aqui. Parques com encontros gratuitos e espaços parceiros alinhados ao natural.') + bannerFoto('curitiba') +
+  return heroFoto('curitiba', topo('Curitiba', 'O piloto da Clipse acontece aqui. Parques com encontros gratuitos e espaços parceiros alinhados ao natural.')) +
   '<div class="filtros" role="group" aria-label="Filtrar por tipo de local">' + cats.map((c) => '<button type="button" class="filtro" data-acao="filtro-local" data-id="' + c[0] + '" aria-pressed="' + (filtroLocal === c[0]) + '">' + (c[0] !== 'todos' ? '<svg class="leg" width="14" height="14" viewBox="-9 -9 18 18" aria-hidden="true">' + FORMA_PINO[c[0]](0, 0) + '</svg>' : '') + c[1] + '</button>').join('') + '</div>' +
   '<div class="cidade">' +
     '<div class="cidade-mapa" id="cidade-mapa">' + mapaSVG() + '<p class="meta">Mapa esquemático, fora de escala.</p><div id="local-detalhe" aria-live="polite">' + detalheLocal() + '</div></div>' +
@@ -759,7 +764,7 @@ function pgCuritiba() {
 }
 
 function pgComunidade() {
-  return topo('Comunidade', 'Grupos para praticar junto, por afinidade e por região. Entrar é uma escolha sua: dá para viver a Clipse só com a sua rotina.') + bannerFoto('comunidade') +
+  return heroFoto('comunidade', topo('Comunidade', 'Grupos para praticar junto, por afinidade e por região. Entrar é uma escolha sua: dá para viver a Clipse só com a sua rotina.')) +
   '<section class="bloco"><h2>Como os grupos funcionam</h2>' +
     '<ul class="lista-ideias tres">' +
       '<li><h3>Sem ranking</h3><p>Ninguém posta número, tempo ou carga para comparar.</p></li>' +
@@ -1299,11 +1304,24 @@ function ligarGuia() {
   window.addEventListener('scroll', f, { passive: true }); window.addEventListener('resize', f); atualizar();
   guiaFim = () => { window.removeEventListener('scroll', f); window.removeEventListener('resize', f); };
 }
+/* Foto de fundo do topo: desliza devagar com a rolagem, só até 8% da altura (margem segura) */
+let heroFotoFim = null;
+function desligarHeroFoto() { if (heroFotoFim) { heroFotoFim(); heroFotoFim = null; } }
+function ligarHeroFoto() {
+  desligarHeroFoto();
+  const h = $('.hero-foto'), img = h && $('.hf-img img', h);
+  if (!img || reduzMovimento()) return;
+  const atualizar = () => { const r = h.getBoundingClientRect(), p = Math.max(0, Math.min(1, -r.top / Math.max(1, r.height))); img.style.transform = 'translate3d(0,' + (p * r.height * 0.08).toFixed(1) + 'px,0)'; };
+  let raf = 0; const f = () => { if (!raf) raf = requestAnimationFrame(() => { raf = 0; atualizar(); }); };
+  window.addEventListener('scroll', f, { passive: true }); window.addEventListener('resize', f); atualizar();
+  heroFotoFim = () => { window.removeEventListener('scroll', f); window.removeEventListener('resize', f); };
+}
 function aposPintar() {
   limparHeroi();
   if (rota === 'inicio') { montarHeroi(); pintarLuaGrande('lua-fecho', C.fases.crescente.p); ligarMovimentos(); ligarLoops(); }
   else { heroi = null; desligarMov(); }
   if (rota === 'guia') { ligarGuia(); ligarLoops(); } else desligarGuia();
+  ligarHeroFoto();
   if (rota === 'minha-jornada' && estado.logado) {
     const alvo = C.fases[estado.fase].p;
     if (animarLuaDe != null && !reduzMovimento()) {

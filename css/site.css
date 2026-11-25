@@ -954,3 +954,16 @@ html[data-texto="2"] .aviso, html[data-texto="3"] .aviso { bottom: calc(88px + e
   .mosaico { grid-auto-rows: 215px; }
   .mosaico .m1 { grid-row: span 2; grid-column: auto; }
 }
+/* ───────── Foto de fundo no topo das páginas ───────── */
+.pagina:has(> .hero-foto:first-child) { padding-top: 0; }
+.hero-foto { position: relative; isolation: isolate; padding: 56px 0 64px; display: grid; gap: 28px; }
+.hf-img, .hf-veu { position: absolute; top: 0; bottom: 0; left: 50%; width: 100vw; margin-left: -50vw; }
+.hf-img { z-index: -2; overflow: hidden; background: var(--surface-sunken); }
+.hf-img img { position: absolute; left: 0; top: -8%; width: 100%; height: 116%; object-fit: cover; object-position: center 40%; will-change: transform; }
+.hf-veu { z-index: -1; background:
+  linear-gradient(90deg, var(--surface) 0%, color-mix(in srgb, var(--surface) 72%, transparent) 40%, color-mix(in srgb, var(--surface) 18%, transparent) 100%),
+  linear-gradient(0deg, var(--surface) 0%, transparent 38%); }
+.hero-foto .pg-topo { padding-top: 0; }
+@media (max-width: 759px) {
+  .hf-veu { background: linear-gradient(0deg, var(--surface) 0%, color-mix(in srgb, var(--surface) 78%, transparent) 55%, color-mix(in srgb, var(--surface) 55%, transparent) 100%); }
+}
