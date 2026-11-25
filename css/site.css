@@ -917,3 +917,40 @@ html[data-texto="2"] .tabbar, html[data-texto="3"] .tabbar { display: grid; }
 html[data-texto="2"], html[data-texto="3"] { --base: 66px; }
 html[data-texto="2"] .rodape, html[data-texto="3"] .rodape { padding-bottom: calc(112px + env(safe-area-inset-bottom)); }
 html[data-texto="2"] .aviso, html[data-texto="3"] .aviso { bottom: calc(88px + env(safe-area-inset-bottom)); }
+/* Fotos */
+.prod-banner { overflow: hidden; border-radius: var(--radius-lg); aspect-ratio: 16 / 10; max-height: 520px; background: var(--surface-sunken); }
+.prod-banner img { width: 100%; height: 100%; object-fit: cover; object-position: center 100%; display: block; transition: transform .6s cubic-bezier(.2, .7, .2, 1); }
+.prod-banner:hover img { transform: scale(1.02); }
+
+.avatar { position: relative; overflow: hidden; }
+.avatar img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.pessoa .avatar { width: 88px; height: 88px; border-radius: 24px; font-size: 1.4rem; }
+.prof-foto { width: 120px; height: 120px; border-radius: 28px; font-size: 1.8rem; margin-bottom: 4px; }
+.bv-gente .avatar img { border-radius: 50%; }
+/* ───────── Fotos de pessoas e lugares ───────── */
+.foto-moldura { margin: 0; overflow: hidden; border-radius: var(--radius-lg); background: var(--surface-sunken); }
+.foto-moldura img { display: block; width: 100%; height: 100%; object-fit: cover; transition: transform .6s cubic-bezier(.2, .7, .2, 1); }
+.foto-moldura:hover img { transform: scale(1.03); }
+.banner-foto { aspect-ratio: 16 / 9; max-height: 440px; }
+.banner-foto img { object-position: center 40%; }
+.gd-foto { aspect-ratio: 16 / 9; }
+.hist-art { display: grid; gap: 18px; }
+.hist-art .foto-hist { aspect-ratio: 4 / 5; max-width: 280px; border-radius: var(--radius-md); }
+.hist-txt { display: grid; gap: 10px; align-content: start; }
+.historias .hist-art { max-width: 860px; }
+.hist-card { grid-template-columns: auto 1fr; align-items: center; column-gap: 16px; }
+.hist-card > div { display: grid; gap: 6px; min-width: 0; }
+.hist-av { width: 68px; height: 68px; border-radius: 50%; object-fit: cover; }
+.grupo-foto { aspect-ratio: 16 / 9; margin: -20px -20px 0; border-radius: var(--radius-lg) var(--radius-lg) 0 0; }
+.mosaico { display: grid; gap: 12px; grid-template-columns: 1fr 1fr; grid-auto-rows: 180px; }
+.mosaico .m1 { grid-column: 1 / -1; grid-row: span 1; }
+.creditos { display: grid; gap: 2px 24px; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); margin-top: 8px; font-size: .9rem; }
+.creditos li { display: flex; justify-content: space-between; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--line); }
+.creditos span { color: var(--ink-muted); font-size: .8125rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (min-width: 640px) {
+  .hist-art { grid-template-columns: 200px 1fr; gap: 28px; align-items: start; }
+}
+@media (min-width: 900px) {
+  .mosaico { grid-auto-rows: 215px; }
+  .mosaico .m1 { grid-row: span 2; grid-column: auto; }
+}

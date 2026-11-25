@@ -335,6 +335,7 @@ function produtosAtuais() {
   return l;
 }
 function fotoSrc(p) {
+  if (p.imagem && /^assets\/fotos\/[\w.-]+\.(webp|jpe?g|png)$/.test(p.imagem)) return p.imagem;
   if (p.fotoData && /^data:image\/(jpeg|png|webp);base64,/.test(p.fotoData)) return p.fotoData;
   if (p.foto && /^[A-Za-z0-9_-]{8,64}$/.test(p.foto)) return '/_blob/' + p.foto;
   return '';
@@ -558,12 +559,19 @@ function pgInicio() {
         'Aulas curtas', 'Vídeos de ' + Math.min.apply(null, mins) + ' a ' + Math.max.apply(null, mins) + ' minutos, gravados por profissionais, e um guia digital em cinco capítulos.') +
       cartao('programacao', '<div class="bv-semana">' + C.semana.map((e) => '<div class="bv-dia"><i class="' + (e.tipo === 'Presencial' ? 'pr' : e.tipo === 'Ao vivo' ? 'vv' : '') + '"></i><span>' + abrev[e.dia] + '</span></div>').join('') + '</div>',
         'Programação da semana', 'Aula na segunda, corrida no parque na quinta, encontro no sábado. Você participa do que couber.') +
-      cartao('profissionais', '<div class="bv-gente">' + C.profissionais.slice(0, 5).map((p) => '<div class="avatar av-' + p.area.toLowerCase().normalize('NFD').replace(/[^a-z]/g, '') + '">' + iniciais(p.nome) + '</div>').join('') + '</div><div class="bv-papeis"><span class="selo">Nutrição</span><span class="selo">Treino</span><span class="selo">Psicologia</span></div>',
+      cartao('profissionais', '<div class="bv-gente">' + C.profissionais.slice(0, 5).map((p) => '<div class="avatar av-' + p.area.toLowerCase().normalize('NFD').replace(/[^a-z]/g, '') + '">' + iniciais(p.nome) + fotoProf(p.id) + '</div>').join('') + '</div><div class="bv-papeis"><span class="selo">Nutrição</span><span class="selo">Treino</span><span class="selo">Psicologia</span></div>',
         'Profissionais', 'Nutricionistas, personal trainers e psicólogos que respeitam o ponto em que você está.') +
       cartao('minha-jornada', hubSVG(), 'Tudo ligado à sua fase', 'Em cada fase a Clipse sugere aulas, profissionais, grupos e encontros diferentes.', true) +
     '</ul>' +
   '</div></section>';
 
+  const comunidade =
+  '<section class="tela" data-theme="lua" aria-labelledby="h-com"><div class="wrap duas-col">' +
+    '<div class="col-texto"><h2 id="h-com">Grupos para treinar perto</h2>' +
+      '<p class="lide">Corrida, yoga, caminhada e treino em casa, em Curitiba e online. Entrar é uma escolha sua, e quem tem constância acompanha quem está voltando.</p>' +
+      '<a class="btn btn-sec" href="#comunidade">Ver os grupos</a></div>' +
+    '<div class="mosaico">' + (C.fotos.mosaico || []).map((a, i) => quadro(a, 'm' + (i + 1))).join('') + '</div>' +
+  '</div></section>';
   const manifesto =
   '<section class="tela manifesto" id="manifesto" aria-labelledby="h-mani"><div class="manifesto-pino"><div class="wrap">' +
     '<h2 id="h-mani">O jeito da Clipse</h2>' +
@@ -584,7 +592,7 @@ function pgInicio() {
   '<section class="tela" aria-labelledby="h-his"><div class="wrap hist-grade">' +
     '<div><h2 id="h-his">Histórias de retorno</h2>' +
       '<figure class="hist-quote"><blockquote>Registrar as minhas voltas me mostrou que eu nunca parei de verdade.</blockquote><figcaption>Aline, personagem ilustrativa. <a href="#historias">Ler as histórias de retorno</a></figcaption></figure></div>' +
-    '<div class="hist-lista">' + C.historias.slice(0, 3).map((h) => '<a class="hist-card" href="#historias"><p class="hist-fases">' + luaMini(C.fases[h.de].p, 22) + ic('seta', 14) + luaMini(C.fases[h.para].p, 22) + '<span>' + h.pausa + '</span></p><h3>' + h.t + '</h3><p class="meta">' + h.quem + '</p></a>').join('') + '</div>' +
+    '<div class="hist-lista">' + C.historias.slice(0, 3).map((h, i) => '<a class="hist-card" href="#historias">' + (C.fotos.hist[i] ? fotoImg(C.fotos.hist[i], 'hist-av') : '') + '<div><p class="hist-fases">' + luaMini(C.fases[h.de].p, 22) + ic('seta', 14) + luaMini(C.fases[h.para].p, 22) + '<span>' + h.pausa + '</span></p><h3>' + h.t + '</h3><p class="meta">' + h.quem + '</p></div></a>').join('') + '</div>' +
   '</div></section>';
 
   const planos =
@@ -602,7 +610,7 @@ function pgInicio() {
       '<div class="acoes"><a class="btn btn-pri" href="' + hrefJor + '">' + acaoJor + '</a><a class="btn btn-sec" href="#planos">Ver os planos</a></div></div></div>' +
   '</section>';
 
-  return hero + fases + jornada + reune + manifesto + curitiba + historias + planos + fecho;
+  return hero + fases + jornada + reune + comunidade + manifesto + curitiba + historias + planos + fecho;
 }
 
 function linhaAula(a) {
@@ -624,7 +632,7 @@ function pgNatural() {
         '<button type="button" role="tab" id="nat-t-entra" aria-selected="true" aria-controls="nat-p-entra" data-acao="nat-aba" data-id="entra">Quem entra</button>' +
         '<button type="button" role="tab" id="nat-t-medico" aria-selected="false" tabindex="-1" aria-controls="nat-p-medico" data-acao="nat-aba" data-id="medico">Tratamento médico</button></div>' +
       '<div class="nat-paineis"><p role="tabpanel" id="nat-p-entra" aria-labelledby="nat-t-entra">Vale para quem compete no fisiculturismo natural e para quem só quer treinar, correr ou fazer yoga e se sentir bem.</p>' +
-      '<p role="tabpanel" id="nat-p-medico" aria-labelledby="nat-t-medico" hidden>É outra conversa. Quem usa hormônio ou medicamento com indicação e acompanhamento segue o que o médico orientou.</p></div></aside></div>' +
+      '<p role="tabpanel" id="nat-p-medico" aria-labelledby="nat-t-medico" hidden>É outra conversa. Quem usa hormônio ou medicamento com indicação e acompanhamento segue o que o médico orientou.</p></div></aside></div>' + bannerFoto('natural') +
   '<section class="bloco tom-claro" data-theme="lua"><div class="nat-cab"><span class="rotulo">' + C.motivos.length + ' motivos</span><h2>Motivos para ficar no natural</h2></div>' +
     '<ol class="nat-cards">' + C.motivos.map((m, i) => '<li><span class="num">' + (i + 1) + '</span><h3>' + m.t + '</h3><p>' + m.d + '</p></li>').join('') +
       '<li class="nat-cta"><h3>Comece pela aula mais curta</h3><p>' + primeira.t + ', com ' + esc(primeira.por) + '. ' + primeira.min + ' minutos.</p><button type="button" class="btn btn-pri btn-p" data-acao="aula" data-id="' + primeira.id + '">' + ic('play', 16) + '<span>Ver a aula</span></button></li></ol>' +
@@ -653,7 +661,7 @@ function linhaEvento(e, quando) {
     '</div></li>';
 }
 function pgProgramacao() {
-  return topo('Programação', 'A semana da Clipse tem um ritmo fixo. Você participa do que couber na sua.') +
+  return topo('Programação', 'A semana da Clipse tem um ritmo fixo. Você participa do que couber na sua.') + bannerFoto('programacao') +
   '<section class="bloco"><h2>Toda semana</h2>' +
     '<ul class="eventos">' + C.semana.map((e) => linhaEvento(e, '<strong>' + e.dia + '</strong><span>' + e.hora + '</span>')).join('') + '</ul>' +
   '</section>' +
@@ -666,6 +674,10 @@ function pgProgramacao() {
   notaIlustrativa('Programação ilustrativa. Horários e locais serão definidos com os parceiros.');
 }
 
+const fotoImg = (arq, cls) => '<img' + (cls ? ' class="' + cls + '"' : '') + ' src="assets/fotos/' + arq + '" alt="' + esc((C.fotoAlt || {})[arq] || '') + '" loading="lazy" decoding="async" data-some="1">';
+const quadro = (arq, cls) => arq ? '<figure class="foto-moldura ' + (cls || '') + '">' + fotoImg(arq) + '</figure>' : '';
+const bannerFoto = (chave) => quadro(C.fotos && C.fotos.banner[chave], 'banner-foto');
+const fotoProf = (id) => (C.fotos && C.fotos.prof[id]) ? '<img src="assets/fotos/' + C.fotos.prof[id] + '" alt="" width="96" height="96" loading="lazy" data-some="1">' : '';
 function iniciais(nome) { return nome.split(' ').map((p) => p[0]).slice(0, 2).join(''); }
 function pgProfissionais() {
   const areas = ['Todos', 'Nutrição', 'Treino', 'Psicologia'];
@@ -673,7 +685,7 @@ function pgProfissionais() {
   return topo('Profissionais', 'Nutricionistas, personal trainers e psicólogos que trabalham sem atalho e respeitam a sua fase.') +
   '<div class="filtros" role="group" aria-label="Filtrar por área">' + areas.map((a) => '<button type="button" class="filtro" data-acao="filtro-prof" data-id="' + a + '" aria-pressed="' + (filtroProf === a) + '">' + a + '</button>').join('') + '</div>' +
   '<h2 class="oculto">Pessoas do time</h2><ul class="gente">' + lista.map((p) =>
-    '<li class="pessoa"><div class="avatar av-' + p.area.toLowerCase().normalize('NFD').replace(/[^a-z]/g, '') + '" aria-hidden="true">' + iniciais(p.nome) + '</div>' +
+    '<li class="pessoa"><div class="avatar av-' + p.area.toLowerCase().normalize('NFD').replace(/[^a-z]/g, '') + '" aria-hidden="true">' + iniciais(p.nome) + fotoProf(p.id) + '</div>' +
     '<div class="pessoa-txt"><h3>' + p.nome + '</h3><p class="papel">' + p.papel + '</p><p>' + p.foco + '</p><p class="meta">' + p.onde + '</p>' +
     '<div class="acoes"><button type="button" class="btn btn-sec btn-p" data-acao="prof" data-id="' + p.id + '">Ver perfil</button>' + botaoSalvar('profissionais', p.id) + '</div></div></li>').join('') + '</ul>' +
   '<section class="bloco prosa"><h2>Como funciona o acompanhamento</h2>' +
@@ -734,7 +746,7 @@ function detalheLocal() {
 }
 function pgCuritiba() {
   const cats = [['todos', 'Todos']].concat(Object.keys(C.categoriasLocal).map((k) => [k, C.categoriasLocal[k]]));
-  return topo('Curitiba', 'O piloto da Clipse acontece aqui. Parques com encontros gratuitos e espaços parceiros alinhados ao natural.') +
+  return topo('Curitiba', 'O piloto da Clipse acontece aqui. Parques com encontros gratuitos e espaços parceiros alinhados ao natural.') + bannerFoto('curitiba') +
   '<div class="filtros" role="group" aria-label="Filtrar por tipo de local">' + cats.map((c) => '<button type="button" class="filtro" data-acao="filtro-local" data-id="' + c[0] + '" aria-pressed="' + (filtroLocal === c[0]) + '">' + (c[0] !== 'todos' ? '<svg class="leg" width="14" height="14" viewBox="-9 -9 18 18" aria-hidden="true">' + FORMA_PINO[c[0]](0, 0) + '</svg>' : '') + c[1] + '</button>').join('') + '</div>' +
   '<div class="cidade">' +
     '<div class="cidade-mapa" id="cidade-mapa">' + mapaSVG() + '<p class="meta">Mapa esquemático, fora de escala.</p><div id="local-detalhe" aria-live="polite">' + detalheLocal() + '</div></div>' +
@@ -747,7 +759,7 @@ function pgCuritiba() {
 }
 
 function pgComunidade() {
-  return topo('Comunidade', 'Grupos para praticar junto, por afinidade e por região. Entrar é uma escolha sua: dá para viver a Clipse só com a sua rotina.') +
+  return topo('Comunidade', 'Grupos para praticar junto, por afinidade e por região. Entrar é uma escolha sua: dá para viver a Clipse só com a sua rotina.') + bannerFoto('comunidade') +
   '<section class="bloco"><h2>Como os grupos funcionam</h2>' +
     '<ul class="lista-ideias tres">' +
       '<li><h3>Sem ranking</h3><p>Ninguém posta número, tempo ou carga para comparar.</p></li>' +
@@ -758,7 +770,7 @@ function pgComunidade() {
   '<section class="bloco"><h2>Grupos em Curitiba e online</h2>' +
     '<ul class="grupos">' + C.grupos.map((g) => {
       const on = estado.logado && estado.salvos.grupos.indexOf(g.id) >= 0;
-      return '<li class="grupo' + (on ? ' on' : '') + '"><div class="grupo-txt"><p class="papel">' + g.ativ + ', ritmo ' + g.ritmo.toLowerCase() + '</p><h3>' + g.nome + '</h3><p>' + g.d + '</p>' +
+      return '<li class="grupo' + (on ? ' on' : '') + '">' + quadro(C.fotos.grupo[g.id], 'grupo-foto') + '<div class="grupo-txt"><p class="papel">' + g.ativ + ', ritmo ' + g.ritmo.toLowerCase() + '</p><h3>' + g.nome + '</h3><p>' + g.d + '</p>' +
         '<p class="meta">' + esc(g.regiao) + '. ' + g.quando + '.</p><p class="grupo-gente">' + luaMini(0.25, 16) + '<span>' + g.gente + ' pessoas, ' + g.voltando + ' voltando agora</span></p></div>' +
         '<button type="button" class="btn btn-sec' + (on ? ' on' : '') + ' btn-p" data-acao="grupo" data-id="' + g.id + '" aria-pressed="' + on + '">' + (on ? 'Sair do grupo' : 'Entrar no grupo') + '</button></li>';
     }).join('') + '</ul>' +
@@ -898,6 +910,7 @@ function pgProdutos() {
   else corpo = '<ul class="vitrine">' + lista.map(cartaoProduto).join('') + '</ul>';
   const nota = { compartilhado: 'O que você salvar aqui aparece para todo mundo que abrir o site.', local: 'Modo local: as mudanças ficam salvas só neste navegador.', indisponivel: 'Não deu para carregar a vitrine agora. Estes são produtos de exemplo.' }[st] || '';
   return topo('Produtos', 'A vitrine da Clipse. Por enquanto é só para ver: a venda entra numa próxima etapa.') +
+    '<figure class="prod-banner"><img src="assets/fotos/camisetas-no-parque.webp" alt="Duas pessoas sorrindo num parque, vestindo camisetas da Clipse" loading="lazy"></figure>' +
     (podeGerir ? '<div class="painel-gerir"><div><strong>Painel da vitrine</strong><p class="meta">' + nota + '</p></div><div class="acoes">' +
       (gerindo ? '<button type="button" class="btn btn-pri btn-p" data-acao="produto-novo">' + ic('soma', 16) + '<span>Adicionar produto</span></button>' : '') +
       '<button type="button" class="btn btn-sec btn-p" data-acao="gerir" aria-pressed="' + gerindo + '">' + (gerindo ? 'Concluir' : 'Gerenciar vitrine') + '</button></div></div>'
@@ -941,9 +954,9 @@ function pgParceiro() {
 function pgHistorias() {
   return topo('Histórias de retorno', 'Parar acontece com quase todo mundo. Aqui, quem voltou conta como foi.') +
   notaIlustrativa('Histórias ilustrativas, inspiradas nos perfis que apareceram na pesquisa do projeto. Os nomes e os relatos são fictícios.') +
-  '<ul class="historias">' + C.historias.map((h) =>
-    '<li><article><p class="hist-fases">' + luaMini(C.fases[h.de].p, 22) + ic('seta', 14) + luaMini(C.fases[h.para].p, 22) + '<span>' + h.pausa + '</span></p>' +
-    '<h2>' + h.t + '</h2><p>' + h.d + '</p><p class="meta">' + h.quem + '</p></article></li>').join('') + '</ul>' +
+  '<ul class="historias">' + C.historias.map((h, i) =>
+    '<li><article class="hist-art">' + quadro(C.fotos.hist[i], 'foto-hist') + '<div class="hist-txt"><p class="hist-fases">' + luaMini(C.fases[h.de].p, 22) + ic('seta', 14) + luaMini(C.fases[h.para].p, 22) + '<span>' + h.pausa + '</span></p>' +
+    '<h2>' + h.t + '</h2><p>' + h.d + '</p><p class="meta">' + h.quem + '</p></div></article></li>').join('') + '</ul>' +
   '<section class="bloco faixa"><div><h2>A sua volta também conta</h2><p>Na sua jornada, cada volta fica registrada como um marco.</p><a class="btn btn-pri" href="#minha-jornada">Abrir minha jornada</a></div></section>';
 }
 
@@ -968,6 +981,8 @@ function pgSobre() {
     '<p>A Clipse nasceu de um Trabalho de Conclusão de Curso em Design na PUCPR, em 2026, sobre fisiculturismo natural e a cultura do resultado imediato.</p>' +
     '<p>A pesquisa ouviu pessoas que treinam, pausam e voltam. A maior trava apareceu na volta, quando o empenho de antes parece distante. A plataforma existe para cuidar desse momento.</p>' +
     '<p>O piloto é pensado para Curitiba. Projeto de Victor Bergmann.</p></section>' +
+  '<section class="bloco prosa"><h2>Fotos e créditos</h2><p>As fotos do site vêm do Unsplash e ilustram o projeto. As pessoas retratadas não são membros reais da Clipse, e os nomes e as histórias são fictícios.</p>' +
+    '<ul class="creditos">' + (C.creditos || []).map((c) => '<li><a href="' + esc(c[3]) + '" target="_blank" rel="noopener noreferrer">' + (c[1] ? esc(c[1]) : 'Foto no Unsplash') + '</a><span>' + esc(c[0]) + '</span></li>').join('') + '</ul></section>' +
   '<section class="bloco prosa"><h2>Este site</h2><p>É um protótipo navegável. Perfis, parceiros, histórias e valores são ilustrativos, e o login é simulado.</p></section>';
 }
 
@@ -1044,7 +1059,7 @@ function pgGuia() {
 
   /* capítulo 5 */
   const c5 =
-    '<p class="gd-lide">' + caps[4].d + '</p>' +
+    quadro(C.fotos && C.fotos.banner.guia, 'gd-foto') + '<p class="gd-lide">' + caps[4].d + '</p>' +
     '<div class="gd-bloco"><h3>Duas semanas para o corpo lembrar</h3><ol class="gd-roteiro">' +
       '<li>' + luaMini(0, 40) + '<p class="rotulo">Semana 1</p><b>Metade do que você fazia antes</b><span>Comece pequeno. Só observe como o corpo responde.</span></li>' +
       '<li>' + luaMini(0.25, 40, 'sol') + '<p class="rotulo">Semana 2</p><b>Um pouco mais, se o corpo pedir</b><span>Sem se comparar com o ritmo de antes.</span></li></ol></div>' +
@@ -1202,7 +1217,7 @@ function montarCasca() {
     '<div class="rodape-marca"><a class="marca" href="#inicio" aria-label="Clipse, página inicial">' + LOGO + '</a><p>Fitness natural, no seu tempo. Piloto em Curitiba.</p></div>' +
     '<nav class="rodape-nav" aria-label="Mapa do site">' + listaPaginas(false) + '</nav>' +
     '<div class="rodape-avisos"><p><strong>Aviso de saúde.</strong> O conteúdo da Clipse é informativo e não substitui o acompanhamento de médico, nutricionista, psicólogo ou profissional de educação física.</p>' +
-    '<p>Protótipo acadêmico de um TCC de Design na PUCPR, 2026. Perfis, parceiros, histórias e valores são ilustrativos.</p><p><button type="button" class="link" data-acao="acessibilidade">Opções de acessibilidade</button></p></div></div>';
+    '<p>Protótipo acadêmico de um TCC de Design na PUCPR, 2026. Perfis, parceiros, histórias e valores são ilustrativos.</p><p>Fotos de banco de imagens (Unsplash). As pessoas retratadas são ilustrativas e não são membros da Clipse. <a href="#sobre">Créditos das fotos</a></p><p><button type="button" class="link" data-acao="acessibilidade">Opções de acessibilidade</button></p></div></div>';
   atualizarConta();
 }
 function atualizarConta() {
@@ -1343,7 +1358,7 @@ function abrirAula(id) {
 }
 function abrirProf(id) {
   const p = C.profissionais.find((x) => x.id === id); if (!p) return;
-  Folha.abrir({ titulo: p.nome, html: '<p class="papel">' + p.papel + ', ' + p.onde + '</p><p>' + p.bio + '</p><h3>Como acompanha na Clipse</h3><p>' + p.como + '</p>' +
+  Folha.abrir({ titulo: p.nome, html: '<div class="prof-foto avatar av-' + p.area.toLowerCase().normalize('NFD').replace(/[^a-z]/g, '') + '" aria-hidden="true">' + iniciais(p.nome) + fotoProf(p.id) + '</div><p class="papel">' + p.papel + ', ' + p.onde + '</p><p>' + p.bio + '</p><h3>Como acompanha na Clipse</h3><p>' + p.como + '</p>' +
     '<p class="meta">Perfil ilustrativo.</p><div class="acoes">' + botaoSalvar('profissionais', p.id) + '<a class="btn btn-sec btn-p" href="#planos" data-acao="fechar-folha">Ver planos</a></div>' });
 }
 function abrirFases() {
@@ -1582,7 +1597,7 @@ document.addEventListener('pointerover', (e) => {
   if (!c || !c.classList.contains('vivo') || c.contains(e.relatedTarget)) return;
   c.classList.remove('vivo'); void c.offsetWidth; c.classList.add('vivo');
 });
-document.addEventListener('error', (e) => { const t = e.target; if (t && t.tagName === 'IMG' && t.dataset && t.dataset.some) t.remove(); }, true);
+document.addEventListener('error', (e) => { const t = e.target; if (t && t.tagName === 'IMG' && t.dataset && t.dataset.some) { const m = t.closest('.foto-moldura'); t.remove(); if (m && !m.querySelector('img')) m.remove(); } }, true);
 window.addEventListener('hashchange', () => navegar(false));
 
 /* ───────── Partida ───────── */

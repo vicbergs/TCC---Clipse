@@ -190,7 +190,7 @@ window.CLIPSE = {
   ],
 
   produtosExemplo: [
-    { id: 'p1', nome: 'Camiseta Fases',          categoria: 'Roupas',     valor: 89.9,  descricao: 'Algodão, modelagem solta. As quatro fases nas costas.', ordem: 1 },
+    { id: 'p1', nome: 'Camiseta Fases',          categoria: 'Roupas',     valor: 89.9,  descricao: 'Algodão, modelagem solta. As quatro fases nas costas.', imagem: 'assets/fotos/camiseta-preta.webp', ordem: 1 },
     { id: 'p2', nome: 'Moletom Lua Nova',        categoria: 'Roupas',     valor: 199,   descricao: 'Para os dias de pausa e para os de volta.', ordem: 2 },
     { id: 'p3', nome: 'Garrafa Lua Cheia 750 ml', categoria: 'Acessórios', valor: 69.9,  descricao: 'Inox, com tampa de rosca e alça.', ordem: 3 },
     { id: 'p4', nome: 'Boné Crescente',          categoria: 'Acessórios', valor: 79.9,  descricao: 'Aba curva, ajuste traseiro.', ordem: 4 },
